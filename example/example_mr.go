@@ -10,7 +10,12 @@ import (
 type MapStep struct {
 	
 }
-func (m *MapStep) Run(io.Reader, io.Writer) error {
+
+func (m *MapStep) Run(r io.Reader, w io.Writer) error {
+	for data := range gomrjob.JsonInputProtocol(r) {
+		log.Printf("got %v", data)
+		gomrjob.Counter("example_mr", "map_lines_read", 1)
+	}
 	return nil
 }
 
@@ -24,14 +29,10 @@ func (r *ReduceStep) Run(io.Reader, io.Writer) error {
 
 func main() {
 	flag.Parse()
-	streamingJar, err := gomrjob.StreamingJar()
-	log.Printf("%v %v", streamingJar, err)
-	// gomrjob.Copy("/tmp/test.txt", "/users/jehiah/tmp/test.txt")
-	
 
-	// runner := gomrjob.NewRunner()
-	// runner.Mapper = &MapStep{}
-	// runner.Reducer = &ReduceStep{}
-	// runner.Run()
+	runner := gomrjob.NewRunner()
+	runner.Mapper = &MapStep{}
+	runner.Reducer = &ReduceStep{}
+	runner.Run()
 
 }

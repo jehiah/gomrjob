@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	stage = flag.String("stage", "", "map reduce step")
+	stage = flag.String("stage", "", "map,reduce")
 )
 
 type Mapper interface {

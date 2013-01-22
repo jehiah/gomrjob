@@ -60,7 +60,11 @@ func (r *Runner) Run() error {
 	r.makeTempPath()
 	// copy /proc/self/exe to something in hdfs
 	exe := fmt.Sprintf("%s/%s", r.tmpPath, "gomrjob_exe")
-	err := Copy(fmt.Sprintf("/proc/%d/exe", os.Getpid()), exe)
+	exeInfo, err := os.Stat(fmt.Sprintf("/proc/%d/exe", os.Getpid()))
+	if err != nil {
+		log.Fatalf("failed stating file")
+	}
+	err = Copy(exeInfo.Name(), exe)
 	if err != nil {
 		log.Fatalf("error running Copy %s", err)
 	}

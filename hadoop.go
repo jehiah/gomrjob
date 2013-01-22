@@ -3,6 +3,7 @@ package gomrjob
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -45,9 +46,43 @@ func StreamingJar() (string, error) {
 	return streamingJarPath, nil
 }
 
-func Copy(local string, remote string) {
-	cmd := exec.Command(hadoopBinPath("hadoop"), fmt.Sprintf("fs -cp \"%s\" \"%s\"", local, remote))
+// http://hadoop.apache.org/docs/r0.20.2/hdfs_shell.html
+
+func Mkdir(remote string) error {
+	cmd := exec.Command(hadoopBinPath("hadoop"), "fs", "-mkdir", remote)
+	log.Print(cmd.Args)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
-	cmd.Run()
+	return cmd.Run()
+}
+
+func Copy(args ...string) error {
+	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-cp"}, args...)...)
+	log.Print(cmd.Args)
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func SubmitJob(name string, input string, output string, processName string) error {
+	jar, err := StreamingJar()
+	if err != nil {
+		log.Printf("failed finding streaming jar %s", err)
+		return err
+	}
+
+	args := []string{"jar", jar}
+	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", name))
+	args = append(args, "-input", input)
+	args = append(args, "-output", output)
+	args = append(args, "-cacheFile", fmt.Sprintf("%s#%s", processName, processName))
+	args = append(args, "-mapper", fmt.Sprintf("%s --step=map", processName))
+	// -combiner
+	// numReduceTasks
+	args = append(args, "-reducer", fmt.Sprintf("%s --step=reduce", processName))
+	cmd := exec.Command(hadoopBinPath("hadoop"), args...)
+	log.Print(cmd.Args)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }

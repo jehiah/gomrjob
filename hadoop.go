@@ -84,10 +84,10 @@ func SubmitJob(name string, input string, output string, processName string) err
 	args = append(args, "-input", input)
 	args = append(args, "-output", output)
 	args = append(args, "-cacheFile", fmt.Sprintf("%s#%s", processName, processName))
-	args = append(args, "-mapper", fmt.Sprintf("%s --step=map", processName))
+	args = append(args, "-mapper", fmt.Sprintf("%s --step=map", filepath.Base(processName)))
 	// -combiner
 	// numReduceTasks
-	args = append(args, "-reducer", fmt.Sprintf("%s --step=reduce", processName))
+	args = append(args, "-reducer", fmt.Sprintf("%s --step=reduce", filepath.Base(processName)))
 	cmd := exec.Command(hadoopBinPath("hadoop"), args...)
 	log.Print(cmd.Args)
 	cmd.Stdout = os.Stdout

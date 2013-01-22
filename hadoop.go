@@ -56,6 +56,14 @@ func Mkdir(remote string) error {
 	return cmd.Run()
 }
 
+func Put(args ...string) error {
+	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-put"}, args...)...)
+	log.Print(cmd.Args)
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 func Copy(args ...string) error {
 	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-cp"}, args...)...)
 	log.Print(cmd.Args)

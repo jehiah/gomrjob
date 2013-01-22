@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/user"
+	"path/filepath"
 	"time"
 )
 
@@ -58,15 +59,14 @@ func (r *Runner) Run() error {
 	log.Printf("submitting a job")
 
 	r.makeTempPath()
-	// copy /proc/self/exe to something in hdfs
 	exe := fmt.Sprintf("%s/%s", r.tmpPath, "gomrjob_exe")
-	exeInfo, err := os.Stat(fmt.Sprintf("/proc/%d/exe", os.Getpid()))
+	exePath, err := filepath.EvalSymlinks("/proc/self/exe")
 	if err != nil {
 		log.Fatalf("failed stating file")
 	}
-	err = Copy(exeInfo.Name(), exe)
+	err = Put(exePath, exe)
 	if err != nil {
-		log.Fatalf("error running Copy %s", err)
+		log.Fatalf("error running Put %s", err)
 	}
 
 	if r.Output == "" {

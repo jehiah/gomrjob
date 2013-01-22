@@ -39,7 +39,7 @@ func NewRunner() *Runner {
 func (r *Runner) makeTempPath() {
 	user, err := user.Current()
 	var username = ""
-	if err != nil {
+	if err == nil {
 		username = user.Username
 	}
 	now := time.Now().Format("20060102-150405")
@@ -60,7 +60,7 @@ func (r *Runner) Run() error {
 	r.makeTempPath()
 	// copy /proc/self/exe to something in hdfs
 	exe := fmt.Sprintf("%s/%s", r.tmpPath, "gomrjob_exe")
-	err := Copy("/proc/self/exe", exe)
+	err := Copy(fmt.Sprintf("/proc/%d/exe", os.Getpid()), exe)
 	if err != nil {
 		log.Fatalf("error running Copy %s", err)
 	}

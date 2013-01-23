@@ -1,6 +1,7 @@
 package gomrjob
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -12,8 +13,10 @@ import (
 )
 
 var (
-	stage      = flag.String("stage", "", "map,reduce")
-	hdfsPrefix = flag.String("hdfs-prefix", "", "the hdfs://namenode/ prefix")
+	stage        = flag.String("stage", "", "map,reduce")
+	remoteLogger = flag.String("remote-logger", "", "address for remote logger")
+	hdfsPrefix   = flag.String("hdfs-prefix", "", "the hdfs://namenode/ prefix")
+	submitJob    = flag.Bool("submit-job", false, "submit the job")
 )
 
 type Mapper interface {
@@ -49,6 +52,16 @@ func (r *Runner) makeTempPath() {
 }
 
 func (r *Runner) Run() error {
+	if *remoteLogger != "" {
+		err := dialRemoteLogger(*remoteLogger)
+		if err != nil {
+			if *stage == "" {
+				Status(fmt.Sprintf("error dialing remote logger %s", err))
+			} else {
+				log.Printf("failed connecting to remote logger", err)
+			}
+		}
+	}
 	if *stage == "map" {
 		return r.Mapper.Run(os.Stdin, os.Stdout)
 	}
@@ -56,6 +69,11 @@ func (r *Runner) Run() error {
 		// todo pick based on step
 		return r.Reducer.Run(os.Stdin, os.Stdout)
 	}
+
+	if !*submitJob {
+		return errors.New("missing --submit-job or --stage")
+	}
+
 	log.Printf("submitting a job")
 
 	r.makeTempPath()
@@ -73,8 +91,9 @@ func (r *Runner) Run() error {
 		r.Output = fmt.Sprintf("%s/output", r.tmpPath)
 	}
 
+	loggerAddress := startRemoteLogListner()
 	// submit a job
-	err = SubmitJob(r.Name, r.Input, r.Output, exe)
+	err = SubmitJob(r.Name, r.Input, r.Output, loggerAddress, exe)
 	if err != nil {
 		log.Fatalf("error SubmitJob %s", err)
 	}

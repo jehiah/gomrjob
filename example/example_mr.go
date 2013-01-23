@@ -42,6 +42,9 @@ func main() {
 	runner.Name = "test-mr"
 	runner.Mapper = &MapStep{}
 	runner.Reducer = &ReduceStep{}
-	runner.Run()
+	err := runner.Run()
+	if err != nil {
+		log.Fatalf("Run error %s", err)
+	}
 
 }

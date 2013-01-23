@@ -72,22 +72,30 @@ func Copy(args ...string) error {
 	return cmd.Run()
 }
 
-func SubmitJob(name string, input string, output string, processName string) error {
+func SubmitJob(name string, input string, output string, loggerAddress string, processName string) error {
 	jar, err := StreamingJar()
 	if err != nil {
 		log.Printf("failed finding streaming jar %s", err)
 		return err
 	}
 
+	remoteLogger := ""
+	if loggerAddress != "" {
+		remoteLogger = fmt.Sprintf(" --remote-logger=%s", loggerAddress)
+	}
+
 	args := []string{"jar", jar}
 	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", name))
-	args = append(args, "-input", input)
-	args = append(args, "-output", output)
-	args = append(args, "-cacheFile", fmt.Sprintf("%s#%s", processName, processName))
-	args = append(args, "-mapper", fmt.Sprintf("%s --step=map", filepath.Base(processName)))
+	args = append(args, "-input", fmt.Sprintf("hdfs://%s", input))
+	args = append(args, "-output", fmt.Sprintf("hdfs://%s", output))
+	args = append(args, "-cacheFile", fmt.Sprintf("hdfs://%s#%s", processName, filepath.Base(processName)))
+	args = append(args, "-mapper", fmt.Sprintf("%s --step=map%s", filepath.Base(processName), remoteLogger))
+	if loggerAddress != "" {
+		args = append(args)
+	}
 	// -combiner
 	// numReduceTasks
-	args = append(args, "-reducer", fmt.Sprintf("%s --step=reduce", filepath.Base(processName)))
+	args = append(args, "-reducer", fmt.Sprintf("%s --step=reduce%s", filepath.Base(processName), remoteLogger))
 	cmd := exec.Command(hadoopBinPath("hadoop"), args...)
 	log.Print(cmd.Args)
 	cmd.Stdout = os.Stdout

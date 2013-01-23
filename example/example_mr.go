@@ -14,6 +14,7 @@ var (
 type MapStep struct {
 }
 
+// An example Map function. It consumes json data and yields a value for each line
 func (s *MapStep) Run(r io.Reader, w io.Writer) error {
 	out := gomrjob.RawKeyValueOutputProtocol(w)
 	for data := range gomrjob.JsonInputProtocol(r) {
@@ -32,6 +33,7 @@ func (s *MapStep) Run(r io.Reader, w io.Writer) error {
 type ReduceStep struct {
 }
 
+// A simple reduce function that counts keys
 func (s *ReduceStep) Run(r io.Reader, w io.Writer) error {
 	out := gomrjob.RawKeyValueOutputProtocol(w)
 	for kv := range gomrjob.JsonInternalInputProtocol(r) {

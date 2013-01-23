@@ -12,7 +12,6 @@ var (
 )
 
 type MapStep struct {
-	
 }
 
 func (m *MapStep) Run(r io.Reader, w io.Writer) error {
@@ -27,7 +26,6 @@ func (m *MapStep) Run(r io.Reader, w io.Writer) error {
 }
 
 type ReduceStep struct {
-	
 }
 
 func (r *ReduceStep) Run(io.Reader, io.Writer) error {

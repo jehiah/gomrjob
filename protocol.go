@@ -23,6 +23,9 @@ func JsonInputProtocol(input io.Reader) chan *simplejson.Json {
 				break
 			}
 			line, err = r.ReadBytes('\n')
+			if len(line) == 0 {
+				continue
+			}
 			data, err := simplejson.NewJson(line)
 			if err != nil {
 				Counter("JsonInputProtocol", "invalid line", 1)
@@ -56,6 +59,9 @@ func JsonInternalInputProtocol(input io.Reader) chan KeyJsonChan {
 				break
 			}
 			line, err = r.ReadBytes('\n')
+			if len(line) == 0 {
+				continue
+			}
 			chunks := bytes.SplitAfterN(line, []byte("\t"), 2)
 			if len(chunks) != 2 {
 				log.Printf("invalid line. no tab - %s", line)

@@ -14,12 +14,16 @@ var (
 type MapStep struct {
 }
 
-func (m *MapStep) Run(r io.Reader, w io.Writer) error {
+func (s *MapStep) Run(r io.Reader, w io.Writer) error {
 	out := gomrjob.RawKeyValueOutputProtocol(w)
 	for data := range gomrjob.JsonInputProtocol(r) {
-		log.Printf("got %v", data)
 		gomrjob.Counter("example_mr", "map_lines_read", 1)
-		out <- gomrjob.RawKeyValue{"\"key\"", "1"}
+		key, err := data.Get("api_path").String()
+		if err != nil {
+			gomrjob.Counter("example_mr", "missing_key", 1)
+		} else {
+			out <- gomrjob.KeyValue{key, "1"}
+		}
 	}
 	close(out)
 	return nil
@@ -28,7 +32,21 @@ func (m *MapStep) Run(r io.Reader, w io.Writer) error {
 type ReduceStep struct {
 }
 
-func (r *ReduceStep) Run(io.Reader, io.Writer) error {
+func (s *ReduceStep) Run(r io.Reader, w io.Writer) error {
+	out := gomrjob.RawKeyValueOutputProtocol(w)
+	for kv := range gomrjob.JsonInternalInputProtocol(r) {
+		var i int64
+		for v := range kv.Values {
+			vv, err := v.Int64()
+			if err != nil {
+				log.Printf("non-int value %s", err)
+			} else {
+				i += vv
+			}
+		}
+		out <- gomrjob.KeyValue{kv.Key, i}
+	}
+	close(out)
 	return nil
 }
 

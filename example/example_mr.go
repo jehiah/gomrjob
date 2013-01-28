@@ -5,17 +5,25 @@ import (
 	"flag"
 	"io"
 	"log"
+	"fmt"
 )
 
 var (
 	input = flag.String("input", "", "path to hdfs input file")
 )
 
-type MapStep struct {
+type MRStep struct {
+}
+
+func (s *MRStep) MapperSetup() error {
+	return nil
+}
+func (s *MRStep) MapperTeardown(w io.Writer) error {
+	return nil
 }
 
 // An example Map function. It consumes json data and yields a value for each line
-func (s *MapStep) Run(r io.Reader, w io.Writer) error {
+func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
 	out := gomrjob.RawKeyValueOutputProtocol(w)
 	for data := range gomrjob.JsonInputProtocol(r) {
 		gomrjob.Counter("example_mr", "map_lines_read", 1)
@@ -30,11 +38,15 @@ func (s *MapStep) Run(r io.Reader, w io.Writer) error {
 	return nil
 }
 
-type ReduceStep struct {
+func (s *MRStep) ReducerSetup() error {
+	return nil
+}
+func (s *MRStep) ReducerTeardown(w io.Writer) error {
+	return nil
 }
 
 // A simple reduce function that counts keys
-func (s *ReduceStep) Run(r io.Reader, w io.Writer) error {
+func (t *MRStep) Reducer(r io.Reader, w io.Writer) error {
 	out := gomrjob.RawKeyValueOutputProtocol(w)
 	for kv := range gomrjob.JsonInternalInputProtocol(r) {
 		var i int64
@@ -56,12 +68,12 @@ func main() {
 	flag.Parse()
 
 	runner := gomrjob.NewRunner()
-	runner.Input = *input
 	runner.Name = "test-mr"
-	runner.Mapper = &MapStep{}
-	runner.Reducer = &ReduceStep{}
+	runner.InputFiles = append(runner.InputFiles, *input)
+	runner.Steps = append(runner.Steps, &MRStep{})
 	err := runner.Run()
 	if err != nil {
+		gomrjob.Status(fmt.Sprintf("Run error %s", err))
 		log.Fatalf("Run error %s", err)
 	}
 

@@ -14,33 +14,44 @@ import (
 
 var (
 	stage        = flag.String("stage", "", "map,reduce")
+	step         = flag.Int("step", 0, "the step to execute")
 	remoteLogger = flag.String("remote-logger", "", "address for remote logger")
 	hdfsPrefix   = flag.String("hdfs-prefix", "", "the hdfs://namenode/ prefix")
 	submitJob    = flag.Bool("submit-job", false, "submit the job")
 )
 
 type Mapper interface {
-	Run(io.Reader, io.Writer) error
+	MapperSetup() error
+	Mapper(io.Reader, io.Writer) error
+	MapperTeardown(io.Writer) error
 }
 
 type Reducer interface {
-	Run(io.Reader, io.Writer) error
+	ReducerSetup() error
+	Reducer(io.Reader, io.Writer) error
+	ReducerTeardown(io.Writer) error
+}
+
+type Step interface {
+	Mapper
+	Reducer
 }
 
 type Runner struct {
-	Name    string
-	Mapper  Mapper
-	Reducer Reducer
-	Input   string
-	Output  string
-	tmpPath string
+	Name       string
+	Steps      []Step
+	InputFiles []string
+	Output     string
+	tmpPath    string
 }
 
 func NewRunner() *Runner {
-	return &Runner{}
+	r := &Runner{}
+	r.setTempPath()
+	return r
 }
 
-func (r *Runner) makeTempPath() {
+func (r *Runner) setTempPath() {
 	user, err := user.Current()
 	var username = ""
 	if err == nil {
@@ -48,7 +59,6 @@ func (r *Runner) makeTempPath() {
 	}
 	now := time.Now().Format("20060102-150405")
 	r.tmpPath = fmt.Sprintf("/user/%s/tmp/%s.%s", username, r.Name, now)
-	Mkdir(r.tmpPath)
 }
 
 func (r *Runner) Run() error {
@@ -62,21 +72,41 @@ func (r *Runner) Run() error {
 			}
 		}
 	}
-	if *stage == "map" {
-		return r.Mapper.Run(os.Stdin, os.Stdout)
+	if *step >= len(r.Steps) {
+		return fmt.Errorf("invalid --step=%d (max %d)", *step, len(r.Steps))
 	}
-	if *stage == "reduce" {
-		// todo pick based on step
-		return r.Reducer.Run(os.Stdin, os.Stdout)
-	}
+	s := r.Steps[*step]
 
+	switch *stage {
+	case "map", "mapper":
+		if err := s.MapperSetup(); err != nil {
+			return err
+		}
+		if err := s.Mapper(os.Stdin, os.Stdout); err != nil {
+			return err
+		}
+		if err := s.MapperTeardown(os.Stdout); err != nil {
+			return err
+		}
+	case "reduce":
+		if err := s.ReducerSetup(); err != nil {
+			return err
+		}
+		if err := s.Reducer(os.Stdin, os.Stdout); err != nil {
+			return err
+		}
+		if err := s.ReducerTeardown(os.Stdout); err != nil {
+			return err
+		}
+	}
 	if !*submitJob {
 		return errors.New("missing --submit-job or --stage")
 	}
 
 	log.Printf("submitting a job")
 
-	r.makeTempPath()
+	r.setTempPath()
+	Mkdir(r.tmpPath)
 	exe := fmt.Sprintf("%s/%s", r.tmpPath, "gomrjob_exe")
 	exePath, err := filepath.EvalSymlinks("/proc/self/exe")
 	if err != nil {
@@ -93,7 +123,7 @@ func (r *Runner) Run() error {
 
 	loggerAddress := startRemoteLogListner()
 	// submit a job
-	err = SubmitJob(r.Name, r.Input, r.Output, loggerAddress, exe)
+	err = SubmitJob(r.Name, r.InputFiles, r.Output, loggerAddress, exe)
 	if err != nil {
 		log.Fatalf("error SubmitJob %s", err)
 	}

@@ -72,7 +72,9 @@ func Copy(args ...string) error {
 	return cmd.Run()
 }
 
-func SubmitJob(name string, input string, output string, loggerAddress string, processName string) error {
+func SubmitJob(name string, input []string, output string, loggerAddress string, processName string) error {
+	// http://hadoop.apache.org/docs/r0.20.2/streaming.html
+	// http://hadoop.apache.org/docs/r1.1.1/streaming.html
 	jar, err := StreamingJar()
 	if err != nil {
 		log.Printf("failed finding streaming jar %s", err)
@@ -86,7 +88,9 @@ func SubmitJob(name string, input string, output string, loggerAddress string, p
 
 	args := []string{"jar", jar}
 	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", name))
-	args = append(args, "-input", fmt.Sprintf("hdfs://%s", input))
+	for _, i := range input {
+		args = append(args, "-input", fmt.Sprintf("hdfs://%s", i))
+	}
 	args = append(args, "-output", fmt.Sprintf("hdfs://%s", output))
 	args = append(args, "-cacheFile", fmt.Sprintf("hdfs://%s#%s", processName, filepath.Base(processName)))
 	args = append(args, "-mapper", fmt.Sprintf("%s --stage=map%s", filepath.Base(processName), remoteLogger))
@@ -94,7 +98,8 @@ func SubmitJob(name string, input string, output string, loggerAddress string, p
 		args = append(args)
 	}
 	// -combiner
-	// numReduceTasks
+	// -D mapred.map.tasks=1
+	// -D mapred.reduce.tasks=0".
 	args = append(args, "-reducer", fmt.Sprintf("%s --stage=reduce%s", filepath.Base(processName), remoteLogger))
 	cmd := exec.Command(hadoopBinPath("hadoop"), args...)
 	log.Print(cmd.Args)

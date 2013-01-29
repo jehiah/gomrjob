@@ -38,15 +38,18 @@ type Step interface {
 }
 
 type Runner struct {
-	Name       string
-	Steps      []Step
-	InputFiles []string
-	Output     string
-	tmpPath    string
+	Name         string
+	Steps        []Step
+	InputFiles   []string
+	Output       string
+	ReducerTasks int
+	tmpPath      string
 }
 
 func NewRunner() *Runner {
-	r := &Runner{}
+	r := &Runner{
+		ReducerTasks: 30,
+	}
 	r.setTempPath()
 	return r
 }
@@ -59,6 +62,27 @@ func (r *Runner) setTempPath() {
 	}
 	now := time.Now().Format("20060102-150405")
 	r.tmpPath = fmt.Sprintf("/user/%s/tmp/%s.%s", username, r.Name, now)
+}
+
+func (r *Runner) Cleanup() error {
+	return RMR(r.Output)
+}
+
+func (r *Runner) submitJob(loggerAddress string, processName string) error {
+	remoteLogger := ""
+	if loggerAddress != "" {
+		remoteLogger = fmt.Sprintf(" --remote-logger=%s", loggerAddress)
+	}
+	j := Job{
+		Name:         r.Name,
+		CacheFiles:   []string{fmt.Sprintf("hdfs://%s#%s", processName, filepath.Base(processName))},
+		ReducerTasks: r.ReducerTasks,
+		Input:        r.InputFiles,
+		Output:       r.Output,
+		Mapper:       fmt.Sprintf("%s --stage=map%s", filepath.Base(processName), remoteLogger),
+		Reducer:      fmt.Sprintf("%s --stage=reduce%s", filepath.Base(processName), remoteLogger),
+	}
+	return SubmitJob(j)
 }
 
 func (r *Runner) Run() error {
@@ -88,6 +112,9 @@ func (r *Runner) Run() error {
 		if err := s.MapperTeardown(os.Stdout); err != nil {
 			return err
 		}
+		// we want execution to finish here, so just exit.
+		os.Exit(0)
+		return nil
 	case "reduce":
 		if err := s.ReducerSetup(); err != nil {
 			return err
@@ -98,16 +125,21 @@ func (r *Runner) Run() error {
 		if err := s.ReducerTeardown(os.Stdout); err != nil {
 			return err
 		}
+		// we want execution to finish here, so just exit.
+		os.Exit(0)
+		return nil
 	}
 	if !*submitJob {
 		return errors.New("missing --submit-job or --stage")
 	}
 
-	log.Printf("submitting a job")
+	log.Printf("submitting map reduce job")
 
 	r.setTempPath()
 	Mkdir(r.tmpPath)
-	exe := fmt.Sprintf("%s/%s", r.tmpPath, "gomrjob_exe")
+
+	// copy the current executible binary to hadoop for use as the map reduce tasks
+	exe := fmt.Sprintf("%s/%s", r.tmpPath, "gomrjob_binary")
 	exePath, err := filepath.EvalSymlinks("/proc/self/exe")
 	if err != nil {
 		log.Fatalf("failed stating file")
@@ -122,10 +154,10 @@ func (r *Runner) Run() error {
 	}
 
 	loggerAddress := startRemoteLogListner()
-	// submit a job
-	err = SubmitJob(r.Name, r.InputFiles, r.Output, loggerAddress, exe)
+	// submit the streaming job
+	err = r.submitJob(loggerAddress, exe)
 	if err != nil {
-		log.Fatalf("error SubmitJob %s", err)
+		log.Fatalf("error submitting job %s", err)
 	}
 
 	return nil

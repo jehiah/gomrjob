@@ -3,9 +3,10 @@ package main
 import (
 	"../"
 	"flag"
+	"fmt"
 	"io"
 	"log"
-	"fmt"
+	"os"
 )
 
 var (
@@ -24,14 +25,14 @@ func (s *MRStep) MapperTeardown(w io.Writer) error {
 
 // An example Map function. It consumes json data and yields a value for each line
 func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
-	out := gomrjob.RawKeyValueOutputProtocol(w)
+	out := gomrjob.JsonInternalOutputProtocol(w)
 	for data := range gomrjob.JsonInputProtocol(r) {
 		gomrjob.Counter("example_mr", "map_lines_read", 1)
 		key, err := data.Get("api_path").String()
 		if err != nil {
 			gomrjob.Counter("example_mr", "missing_key", 1)
 		} else {
-			out <- gomrjob.KeyValue{key, "1"}
+			out <- gomrjob.KeyValue{key, 1}
 		}
 	}
 	close(out)
@@ -58,7 +59,11 @@ func (t *MRStep) Reducer(r io.Reader, w io.Writer) error {
 				i += vv
 			}
 		}
-		out <- gomrjob.KeyValue{kv.Key, i}
+		keyString, err := kv.Key.String()
+		if err != nil {
+			log.Printf("non-string key %s", err)
+		}
+		out <- gomrjob.KeyValue{keyString, i}
 	}
 	close(out)
 	return nil
@@ -68,7 +73,7 @@ func main() {
 	flag.Parse()
 
 	runner := gomrjob.NewRunner()
-	runner.Name = "test-mr"
+	runner.Name = "test-gomrjob"
 	runner.InputFiles = append(runner.InputFiles, *input)
 	runner.Steps = append(runner.Steps, &MRStep{})
 	err := runner.Run()
@@ -76,5 +81,7 @@ func main() {
 		gomrjob.Status(fmt.Sprintf("Run error %s", err))
 		log.Fatalf("Run error %s", err)
 	}
+	gomrjob.Cat(os.Stdout, fmt.Sprintf("%s/part-*", runner.Output))
+	runner.Cleanup()
 
 }

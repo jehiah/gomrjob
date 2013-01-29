@@ -39,15 +39,15 @@ func JsonInputProtocol(input io.Reader) chan *simplejson.Json {
 	return out
 }
 
-type KeyJsonChan struct {
-	Key    string
+type JsonKeyChan struct {
+	Key    *simplejson.Json
 	Values chan *simplejson.Json
 }
 
 // returns a channel of KeyJsonChan which includes the key, and a channel to read values
 // Each channel will be closed when no data is finished. Errors will be logged
-func JsonInternalInputProtocol(input io.Reader) chan KeyJsonChan {
-	out := make(chan KeyJsonChan)
+func JsonInternalInputProtocol(input io.Reader) chan JsonKeyChan {
+	out := make(chan JsonKeyChan)
 	var jsonChan chan *simplejson.Json
 	go func() {
 		var line []byte
@@ -73,9 +73,16 @@ func JsonInternalInputProtocol(input io.Reader) chan KeyJsonChan {
 				if jsonChan != nil {
 					close(jsonChan)
 				}
+				key, err := simplejson.NewJson(chunks[0])
+				if err != nil {
+					Counter("JsonInternalInputProtocol", "invalid line", 1)
+					log.Printf("%s - failed parsing key %s", err, line)
+					continue
+				}
 				lastKey = chunks[0]
+
 				jsonChan = make(chan *simplejson.Json, 100)
-				out <- KeyJsonChan{string(chunks[0]), jsonChan}
+				out <- JsonKeyChan{key, jsonChan}
 			}
 			data, err := simplejson.NewJson(chunks[1])
 			if err != nil {
@@ -108,18 +115,29 @@ func RawKeyValueOutputProtocol(writer io.Writer) chan KeyValue {
 	return in
 }
 
-// a string Key, and a json value
-func JsonValueOutputProtocol(writer io.Writer) chan KeyValue {
+// a json Key, and a json value
+func JsonInternalOutputProtocol(writer io.Writer) chan KeyValue {
 	in := make(chan KeyValue)
+	tab := []byte("\t")
+	newline := []byte("\n")
 	go func() {
 		for kv := range in {
+			kBytes, err := json.Marshal(kv.Key)
+			if err != nil {
+				Counter("JsonInternalOutputProtocol", "unable to json encode key", 1)
+				log.Printf("%s - failed encoding %v", err, kv.Key)
+				continue
+			}
 			vBytes, err := json.Marshal(kv.Value)
 			if err != nil {
-				Counter("JsonValueOutputProtocol", "unable to json encode value", 1)
+				Counter("JsonInternalOutputProtocol", "unable to json encode value", 1)
 				log.Printf("%s - failed encoding %v", err, kv.Value)
-			} else {
-				fmt.Fprintf(writer, "%s\t%s\n", kv.Key, vBytes)
+				continue
 			}
+			writer.Write(kBytes)
+			writer.Write(tab)
+			writer.Write(vBytes)
+			writer.Write(newline)
 		}
 	}()
 	return in

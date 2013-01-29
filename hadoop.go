@@ -3,12 +3,14 @@ package gomrjob
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 func HasHadoop() bool {
@@ -64,6 +66,26 @@ func Put(args ...string) error {
 	return cmd.Run()
 }
 
+func RMR(args ...string) error {
+	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-rmr"}, args...)...)
+	log.Print(cmd.Args)
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func PutStream(r io.Reader, args ...string) error {
+	if len(args) < 1 || args[0] != "-" {
+		args = append([]string{"-"}, args...) // prepend w/ stdin flag
+	}
+	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-put"}, args...)...)
+	log.Print(cmd.Args)
+	cmd.Stdin = r
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 func Copy(args ...string) error {
 	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-cp"}, args...)...)
 	log.Print(cmd.Args)
@@ -72,7 +94,37 @@ func Copy(args ...string) error {
 	return cmd.Run()
 }
 
-func SubmitJob(name string, input []string, output string, loggerAddress string, processName string) error {
+func Cat(w io.Writer, args ...string) error {
+	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-cat"}, args...)...)
+	log.Print(cmd.Args)
+	cmd.Stdout = w
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+type hdfsFile struct {
+	path string
+}
+
+func (f hdfsFile) String() string {
+	if strings.HasPrefix(f.path, "hdfs://") {
+		return f.path
+	}
+	return fmt.Sprintf("hdfs://%s", f.path)
+}
+
+type Job struct {
+	Name         string
+	Input        []string
+	Output       string
+	Mapper       string
+	Reducer      string
+	Options      []string
+	ReducerTasks int
+	CacheFiles   []string
+}
+
+func SubmitJob(j Job) error {
 	// http://hadoop.apache.org/docs/r0.20.2/streaming.html
 	// http://hadoop.apache.org/docs/r1.1.1/streaming.html
 	jar, err := StreamingJar()
@@ -81,26 +133,25 @@ func SubmitJob(name string, input []string, output string, loggerAddress string,
 		return err
 	}
 
-	remoteLogger := ""
-	if loggerAddress != "" {
-		remoteLogger = fmt.Sprintf(" --remote-logger=%s", loggerAddress)
-	}
-
 	args := []string{"jar", jar}
-	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", name))
-	for _, i := range input {
-		args = append(args, "-input", fmt.Sprintf("hdfs://%s", i))
+	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", j.Name))
+	// -D mapred.map.tasks=1
+	args = append(args, "-D", fmt.Sprintf("mapred.reduce.tasks=%d", j.ReducerTasks))
+
+	for _, f := range j.Input {
+		args = append(args, "-input", hdfsFile{f}.String())
 	}
-	args = append(args, "-output", fmt.Sprintf("hdfs://%s", output))
-	args = append(args, "-cacheFile", fmt.Sprintf("hdfs://%s#%s", processName, filepath.Base(processName)))
-	args = append(args, "-mapper", fmt.Sprintf("%s --stage=map%s", filepath.Base(processName), remoteLogger))
-	if loggerAddress != "" {
-		args = append(args)
+	for _, f := range j.CacheFiles {
+		args = append(args, "-cacheFile", hdfsFile{f}.String())
+	}
+	args = append(args, "-output", hdfsFile{j.Output}.String())
+	if j.Mapper != "" {
+		args = append(args, "-mapper", j.Mapper)
 	}
 	// -combiner
-	// -D mapred.map.tasks=1
-	// -D mapred.reduce.tasks=0".
-	args = append(args, "-reducer", fmt.Sprintf("%s --stage=reduce%s", filepath.Base(processName), remoteLogger))
+	if j.Reducer != "" {
+		args = append(args, "-reducer", j.Reducer)
+	}
 	cmd := exec.Command(hadoopBinPath("hadoop"), args...)
 	log.Print(cmd.Args)
 	cmd.Stdout = os.Stdout

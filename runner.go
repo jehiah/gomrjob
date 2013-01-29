@@ -32,6 +32,12 @@ type Reducer interface {
 	ReducerTeardown(io.Writer) error
 }
 
+type Combiner interface {
+	CombinerSetup() error
+	Combiner(io.Reader, io.Writer) error
+	CombinerTeardown(io.Writer) error
+}
+
 type Step interface {
 	Mapper
 	Reducer
@@ -68,7 +74,7 @@ func (r *Runner) Cleanup() error {
 	return RMR(r.Output)
 }
 
-func (r *Runner) submitJob(loggerAddress string, processName string) error {
+func (r *Runner) submitJob(loggerAddress string, processName string, combiner bool) error {
 	remoteLogger := ""
 	if loggerAddress != "" {
 		remoteLogger = fmt.Sprintf(" --remote-logger=%s", loggerAddress)
@@ -79,8 +85,11 @@ func (r *Runner) submitJob(loggerAddress string, processName string) error {
 		ReducerTasks: r.ReducerTasks,
 		Input:        r.InputFiles,
 		Output:       r.Output,
-		Mapper:       fmt.Sprintf("%s --stage=map%s", filepath.Base(processName), remoteLogger),
-		Reducer:      fmt.Sprintf("%s --stage=reduce%s", filepath.Base(processName), remoteLogger),
+		Mapper:       fmt.Sprintf("%s --stage=mapper%s", filepath.Base(processName), remoteLogger),
+		Reducer:      fmt.Sprintf("%s --stage=reducer%s", filepath.Base(processName), remoteLogger),
+	}
+	if combiner {
+		j.Combiner = fmt.Sprintf("%s --stage=combiner%s", filepath.Base(processName), remoteLogger)
 	}
 	return SubmitJob(j)
 }
@@ -102,7 +111,7 @@ func (r *Runner) Run() error {
 	s := r.Steps[*step]
 
 	switch *stage {
-	case "map", "mapper":
+	case "mapper":
 		if err := s.MapperSetup(); err != nil {
 			return err
 		}
@@ -115,7 +124,7 @@ func (r *Runner) Run() error {
 		// we want execution to finish here, so just exit.
 		os.Exit(0)
 		return nil
-	case "reduce":
+	case "reducer":
 		if err := s.ReducerSetup(); err != nil {
 			return err
 		}
@@ -123,6 +132,20 @@ func (r *Runner) Run() error {
 			return err
 		}
 		if err := s.ReducerTeardown(os.Stdout); err != nil {
+			return err
+		}
+		// we want execution to finish here, so just exit.
+		os.Exit(0)
+		return nil
+	case "combiner":
+		s := s.(Combiner)
+		if err := s.CombinerSetup(); err != nil {
+			return err
+		}
+		if err := s.Combiner(os.Stdin, os.Stdout); err != nil {
+			return err
+		}
+		if err := s.CombinerTeardown(os.Stdout); err != nil {
 			return err
 		}
 		// we want execution to finish here, so just exit.
@@ -154,8 +177,9 @@ func (r *Runner) Run() error {
 	}
 
 	loggerAddress := startRemoteLogListner()
+	_, combiner := s.(Combiner)
 	// submit the streaming job
-	err = r.submitJob(loggerAddress, exe)
+	err = r.submitJob(loggerAddress, exe, combiner)
 	if err != nil {
 		log.Fatalf("error submitting job %s", err)
 	}

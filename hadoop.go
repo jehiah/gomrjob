@@ -119,6 +119,7 @@ type Job struct {
 	Output       string
 	Mapper       string
 	Reducer      string
+	Combiner     string
 	Options      []string
 	ReducerTasks int
 	CacheFiles   []string
@@ -148,7 +149,9 @@ func SubmitJob(j Job) error {
 	if j.Mapper != "" {
 		args = append(args, "-mapper", j.Mapper)
 	}
-	// -combiner
+	if j.Combiner != "" {
+		args = append(args, "-combiner", j.Combiner)
+	}
 	if j.Reducer != "" {
 		args = append(args, "-reducer", j.Reducer)
 	}

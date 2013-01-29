@@ -39,6 +39,18 @@ func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
 	return nil
 }
 
+func (s *MRStep) CombinerSetup() error {
+	return nil
+}
+func (s *MRStep) CombinerTeardown(w io.Writer) error {
+	return nil
+}
+
+// just re-use the reducer as the combiner
+func (s *MRStep) Combiner(r io.Reader, w io.Writer) error {
+	return s.Reducer(r, w)
+}
+
 func (s *MRStep) ReducerSetup() error {
 	return nil
 }
@@ -47,8 +59,8 @@ func (s *MRStep) ReducerTeardown(w io.Writer) error {
 }
 
 // A simple reduce function that counts keys
-func (t *MRStep) Reducer(r io.Reader, w io.Writer) error {
-	out := gomrjob.RawKeyValueOutputProtocol(w)
+func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
+	out := gomrjob.JsonInternalOutputProtocol(w)
 	for kv := range gomrjob.JsonInternalInputProtocol(r) {
 		var i int64
 		for v := range kv.Values {

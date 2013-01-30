@@ -16,13 +16,6 @@ var (
 type MRStep struct {
 }
 
-func (s *MRStep) MapperSetup() error {
-	return nil
-}
-func (s *MRStep) MapperTeardown(w io.Writer) error {
-	return nil
-}
-
 // An example Map function. It consumes json data and yields a value for each line
 func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
 	out := gomrjob.JsonInternalOutputProtocol(w)
@@ -39,23 +32,9 @@ func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
 	return nil
 }
 
-func (s *MRStep) CombinerSetup() error {
-	return nil
-}
-func (s *MRStep) CombinerTeardown(w io.Writer) error {
-	return nil
-}
-
 // just re-use the reducer as the combiner
 func (s *MRStep) Combiner(r io.Reader, w io.Writer) error {
 	return s.Reducer(r, w)
-}
-
-func (s *MRStep) ReducerSetup() error {
-	return nil
-}
-func (s *MRStep) ReducerTeardown(w io.Writer) error {
-	return nil
 }
 
 // A simple reduce function that counts keys

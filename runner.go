@@ -21,21 +21,15 @@ var (
 )
 
 type Mapper interface {
-	MapperSetup() error
 	Mapper(io.Reader, io.Writer) error
-	MapperTeardown(io.Writer) error
 }
 
 type Reducer interface {
-	ReducerSetup() error
 	Reducer(io.Reader, io.Writer) error
-	ReducerTeardown(io.Writer) error
 }
 
 type Combiner interface {
-	CombinerSetup() error
 	Combiner(io.Reader, io.Writer) error
-	CombinerTeardown(io.Writer) error
 }
 
 type Step interface {
@@ -112,26 +106,14 @@ func (r *Runner) Run() error {
 
 	switch *stage {
 	case "mapper":
-		if err := s.MapperSetup(); err != nil {
-			return err
-		}
 		if err := s.Mapper(os.Stdin, os.Stdout); err != nil {
-			return err
-		}
-		if err := s.MapperTeardown(os.Stdout); err != nil {
 			return err
 		}
 		// we want execution to finish here, so just exit.
 		os.Exit(0)
 		return nil
 	case "reducer":
-		if err := s.ReducerSetup(); err != nil {
-			return err
-		}
 		if err := s.Reducer(os.Stdin, os.Stdout); err != nil {
-			return err
-		}
-		if err := s.ReducerTeardown(os.Stdout); err != nil {
 			return err
 		}
 		// we want execution to finish here, so just exit.
@@ -139,13 +121,7 @@ func (r *Runner) Run() error {
 		return nil
 	case "combiner":
 		s := s.(Combiner)
-		if err := s.CombinerSetup(); err != nil {
-			return err
-		}
 		if err := s.Combiner(os.Stdin, os.Stdout); err != nil {
-			return err
-		}
-		if err := s.CombinerTeardown(os.Stdout); err != nil {
 			return err
 		}
 		// we want execution to finish here, so just exit.

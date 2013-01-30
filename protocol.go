@@ -8,11 +8,12 @@ import (
 	"github.com/bitly/go-simplejson"
 	"io"
 	"log"
+	"sync"
 )
 
 // returns a channel of simplejson.Json objects. This channel will be closed
 // when the input stream closes. Errors will be logged
-func JsonInputProtocol(input io.Reader) chan *simplejson.Json {
+func JsonInputProtocol(input io.Reader) <-chan *simplejson.Json {
 	out := make(chan *simplejson.Json, 100)
 	go func() {
 		var line []byte
@@ -41,12 +42,12 @@ func JsonInputProtocol(input io.Reader) chan *simplejson.Json {
 
 type JsonKeyChan struct {
 	Key    *simplejson.Json
-	Values chan *simplejson.Json
+	Values <-chan *simplejson.Json
 }
 
-// returns a channel of KeyJsonChan which includes the key, and a channel to read values
+// returns an input channel with a simplejson.Json key, and a channel of simplejson.Json Values which includes the key
 // Each channel will be closed when no data is finished. Errors will be logged
-func JsonInternalInputProtocol(input io.Reader) chan JsonKeyChan {
+func JsonInternalInputProtocol(input io.Reader) <-chan JsonKeyChan {
 	out := make(chan JsonKeyChan)
 	var jsonChan chan *simplejson.Json
 	go func() {
@@ -105,21 +106,26 @@ type KeyValue struct {
 	Value interface{}
 }
 
-func RawKeyValueOutputProtocol(writer io.Writer) chan KeyValue {
+func RawKeyValueOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyValue) {
 	in := make(chan KeyValue)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for kv := range in {
 			fmt.Fprintf(writer, "%+v\t%+v\n", kv.Key, kv.Value)
 		}
+		wg.Done()
 	}()
-	return in
+	return &wg, in
 }
 
 // a json Key, and a json value
-func JsonInternalOutputProtocol(writer io.Writer) chan KeyValue {
+func JsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyValue) {
 	in := make(chan KeyValue)
 	tab := []byte("\t")
 	newline := []byte("\n")
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for kv := range in {
 			kBytes, err := json.Marshal(kv.Key)
@@ -139,6 +145,7 @@ func JsonInternalOutputProtocol(writer io.Writer) chan KeyValue {
 			writer.Write(vBytes)
 			writer.Write(newline)
 		}
+		wg.Done()
 	}()
-	return in
+	return &wg, in
 }

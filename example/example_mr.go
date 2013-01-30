@@ -18,7 +18,7 @@ type MRStep struct {
 
 // An example Map function. It consumes json data and yields a value for each line
 func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
-	out := gomrjob.JsonInternalOutputProtocol(w)
+	wg, out := gomrjob.JsonInternalOutputProtocol(w)
 	for data := range gomrjob.JsonInputProtocol(r) {
 		gomrjob.Counter("example_mr", "map_lines_read", 1)
 		key, err := data.Get("api_path").String()
@@ -29,6 +29,7 @@ func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
 		}
 	}
 	close(out)
+	wg.Wait()
 	return nil
 }
 
@@ -39,7 +40,7 @@ func (s *MRStep) Combiner(r io.Reader, w io.Writer) error {
 
 // A simple reduce function that counts keys
 func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
-	out := gomrjob.JsonInternalOutputProtocol(w)
+	wg, out := gomrjob.JsonInternalOutputProtocol(w)
 	for kv := range gomrjob.JsonInternalInputProtocol(r) {
 		var i int64
 		for v := range kv.Values {
@@ -57,6 +58,7 @@ func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
 		out <- gomrjob.KeyValue{keyString, i}
 	}
 	close(out)
+	wg.Wait()
 	return nil
 }
 

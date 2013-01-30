@@ -3,9 +3,7 @@ package gomrjob
 import (
 	"bytes"
 	"github.com/bmizerany/assert"
-	"log"
 	"testing"
-	"testing/iotest"
 )
 
 func TestJsonInputProtocol(t *testing.T) {

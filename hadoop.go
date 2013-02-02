@@ -138,12 +138,16 @@ func SubmitJob(j Job) error {
 	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", j.Name))
 	// -D mapred.map.tasks=1
 	args = append(args, "-D", fmt.Sprintf("mapred.reduce.tasks=%d", j.ReducerTasks))
+	// -cmdenv name=value	// Pass env var to streaming commands
+	// -D mapred.output.compress=true 
+	// -D mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCode
 
 	for _, f := range j.Input {
 		args = append(args, "-input", hdfsFile{f}.String())
 	}
 	for _, f := range j.CacheFiles {
 		args = append(args, "-cacheFile", hdfsFile{f}.String())
+		// -file? --files?
 	}
 	args = append(args, "-output", hdfsFile{j.Output}.String())
 	if j.Mapper != "" {

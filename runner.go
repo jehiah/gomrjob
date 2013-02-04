@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -131,6 +132,19 @@ func (r *Runner) copyRunningBinaryToHdfs() error {
 	return nil
 }
 
+func (r *Runner) auditCpuTime(stage string) {
+	var u syscall.Rusage
+	err := syscall.Getrusage(syscall.RUSAGE_SELF, &u)
+	if err != nil {
+		log.Printf("error getting Rusage: %s", err)
+		return
+	}
+	userTime := time.Duration(u.Utime.Nano()) * time.Nanosecond
+	systemTime := time.Duration(u.Stime.Nano()) * time.Nanosecond
+	Counter("gomrjob", fmt.Sprintf("%s userTime (seconds)", stage), int64(userTime.Seconds()))
+	Counter("gomrjob", fmt.Sprintf("%s systemTime (seconds)", stage), int64(systemTime.Seconds()))
+}
+
 func (r *Runner) Run() error {
 	if *remoteLogger != "" {
 		err := dialRemoteLogger(*remoteLogger)
@@ -156,16 +170,10 @@ func (r *Runner) Run() error {
 		if err := s.Mapper(os.Stdin, os.Stdout); err != nil {
 			return err
 		}
-		// we want execution to finish here, so just exit.
-		os.Exit(0)
-		return nil
 	case "reducer":
 		if err := s.Reducer(os.Stdin, os.Stdout); err != nil {
 			return err
 		}
-		// we want execution to finish here, so just exit.
-		os.Exit(0)
-		return nil
 	case "combiner":
 		s, ok := s.(Combiner)
 		if !ok {
@@ -174,7 +182,9 @@ func (r *Runner) Run() error {
 		if err := s.Combiner(os.Stdin, os.Stdout); err != nil {
 			return err
 		}
-		// we want execution to finish here, so just exit.
+	}
+	if *stage != "" {
+		r.auditCpuTime(*stage)
 		os.Exit(0)
 		return nil
 	}

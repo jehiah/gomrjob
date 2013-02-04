@@ -194,9 +194,9 @@ func (r *Runner) Run() error {
 	}
 
 	loggerAddress := startRemoteLogListner()
-	
+
 	if r.Output == "" {
-		r.Output = r.tmpPath
+		r.Output = fmt.Sprintf("%s/output", r.tmpPath)
 	}
 
 	for stepNumber, _ := range r.Steps {

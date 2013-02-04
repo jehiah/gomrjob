@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -16,7 +17,6 @@ var (
 	stage        = flag.String("stage", "", "map,reduce")
 	step         = flag.Int("step", 0, "the step to execute")
 	remoteLogger = flag.String("remote-logger", "", "address for remote logger")
-	hdfsPrefix   = flag.String("hdfs-prefix", "", "the hdfs://namenode/ prefix")
 	submitJob    = flag.Bool("submit-job", false, "submit the job")
 )
 
@@ -37,13 +37,14 @@ type Step interface {
 }
 
 type Runner struct {
-	Name         string
-	Steps        []Step
-	InputFiles   []string
-	Output       string
-	ReducerTasks int
-	tmpPath      string
-	exePath      string
+	Name               string
+	Steps              []Step
+	InputFiles         []string
+	Output             string
+	ReducerTasks       int
+	PassThroughOptions []string
+	tmpPath            string
+	exePath            string
 }
 
 func NewRunner() *Runner {
@@ -65,7 +66,7 @@ func (r *Runner) setTempPath() {
 }
 
 func (r *Runner) Cleanup() error {
-	return RMR(r.Output)
+	return RMR(r.tmpPath)
 }
 
 func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
@@ -93,23 +94,26 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
 	}
 
 	processName := filepath.Base(r.exePath)
-	remoteLogger := ""
+	taskOptions := r.PassThroughOptions[:]
 	if loggerAddress != "" {
-		remoteLogger = fmt.Sprintf(" --remote-logger=%s", loggerAddress)
+		taskOptions = append(taskOptions, fmt.Sprintf(" --remote-logger=%s", loggerAddress))
 	}
+	taskOptions = append(taskOptions, fmt.Sprintf("--step=%d", stepNumber))
+	taskString := fmt.Sprintf("%s %s", processName, strings.Join(taskOptions, " "))
+
 	j := Job{
 		Name:         r.Name,
 		CacheFiles:   []string{fmt.Sprintf("hdfs://%s#%s", r.exePath, processName)},
 		ReducerTasks: r.ReducerTasks,
 		Input:        input,
 		Output:       output,
-		Reducer:      fmt.Sprintf("%s --stage=reducer%s --step=%d", processName, remoteLogger, stepNumber),
+		Reducer:      fmt.Sprintf("%s --stage=reducer", taskString),
 	}
 	if _, ok := step.(Mapper); ok {
-		j.Mapper = fmt.Sprintf("%s --stage=mapper%s --step=%d", processName, remoteLogger, stepNumber)
+		j.Mapper = fmt.Sprintf("%s --stage=mapper", taskString)
 	}
 	if _, ok := step.(Combiner); ok {
-		j.Combiner = fmt.Sprintf("%s --stage=combiner%s --step=%d", processName, remoteLogger, stepNumber)
+		j.Combiner = fmt.Sprintf("%s --stage=combiner", taskString)
 	}
 	return SubmitJob(j)
 }
@@ -190,6 +194,10 @@ func (r *Runner) Run() error {
 	}
 
 	loggerAddress := startRemoteLogListner()
+	
+	if r.Output == "" {
+		r.Output = r.tmpPath
+	}
 
 	for stepNumber, _ := range r.Steps {
 		if err := r.submitJob(loggerAddress, stepNumber); err != nil {

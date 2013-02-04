@@ -75,6 +75,6 @@ func main() {
 		log.Fatalf("Run error %s", err)
 	}
 	gomrjob.Cat(os.Stdout, fmt.Sprintf("%s/part-*", runner.Output))
-	runner.Cleanup()
+	// runner.Cleanup()
 
 }

@@ -25,7 +25,14 @@ func hadoopBinPath(tool string) string {
 
 var streamingJarPath string
 
+// the hadoop streaming jar (hadoop*streaming*.jar) is searched for
+// under the $HADOOP_HOME path, or is set via the $HADOOP_STREAMING_JAR
+// environment variable.
 func StreamingJar() (string, error) {
+	if streamingJarPath != "" {
+		return streamingJarPath, nil
+	}
+	streamingJarPath = os.Getenv("HADOOP_STREAMING_JAR")
 	if streamingJarPath != "" {
 		return streamingJarPath, nil
 	}
@@ -146,8 +153,7 @@ func SubmitJob(j Job) error {
 		args = append(args, "-input", hdfsFile{f}.String())
 	}
 	for _, f := range j.CacheFiles {
-		args = append(args, "-cacheFile", hdfsFile{f}.String())
-		// -file? --files?
+		args = append(args, "-files", hdfsFile{f}.String())
 	}
 	args = append(args, "-output", hdfsFile{j.Output}.String())
 	if j.Mapper != "" {

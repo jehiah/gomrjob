@@ -141,8 +141,8 @@ func (r *Runner) auditCpuTime(stage string) {
 	}
 	userTime := time.Duration(u.Utime.Nano()) * time.Nanosecond
 	systemTime := time.Duration(u.Stime.Nano()) * time.Nanosecond
-	Counter("gomrjob", fmt.Sprintf("%s userTime (seconds)", stage), int64(userTime.Seconds()))
-	Counter("gomrjob", fmt.Sprintf("%s systemTime (seconds)", stage), int64(systemTime.Seconds()))
+	Counter("gomrjob", fmt.Sprintf("%s userTime (ms)", stage), int64(userTime/time.Millisecond))
+	Counter("gomrjob", fmt.Sprintf("%s systemTime (ms)", stage), int64(systemTime/time.Millisecond))
 }
 
 func (r *Runner) Run() error {
@@ -184,7 +184,7 @@ func (r *Runner) Run() error {
 		}
 	}
 	if *stage != "" {
-		r.auditCpuTime(*stage)
+		r.auditCpuTime(fmt.Sprintf("%s[%d]", *stage, *step))
 		os.Exit(0)
 		return nil
 	}
@@ -211,7 +211,7 @@ func (r *Runner) Run() error {
 
 	for stepNumber, _ := range r.Steps {
 		if err := r.submitJob(loggerAddress, stepNumber); err != nil {
-			return fmt.Errorf("failed running Step %d= %s", stepNumber, err)
+			return fmt.Errorf("failed running Step %d = %s", stepNumber, err)
 		}
 	}
 

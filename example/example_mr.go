@@ -20,10 +20,10 @@ type MRStep struct {
 func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
 	wg, out := gomrjob.JsonInternalOutputProtocol(w)
 	for data := range gomrjob.JsonInputProtocol(r) {
-		gomrjob.Counter("example_mr", "map_lines_read", 1)
+		gomrjob.Counter("example_mr", "Map Lines Read", 1)
 		key, err := data.Get("api_path").String()
 		if err != nil {
-			gomrjob.Counter("example_mr", "missing_key", 1)
+			gomrjob.Counter("example_mr", "Missing Key", 1)
 		} else {
 			out <- gomrjob.KeyValue{key, 1}
 		}

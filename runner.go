@@ -161,31 +161,31 @@ func (r *Runner) Run() error {
 	}
 	s := r.Steps[*step]
 
+	var err error
 	switch *stage {
 	case "mapper":
 		s, ok := s.(Mapper)
 		if !ok {
 			return errors.New("step does not support Mapper interface")
 		}
-		if err := s.Mapper(os.Stdin, os.Stdout); err != nil {
-			return err
-		}
+		err = s.Mapper(os.Stdin, os.Stdout)
 	case "reducer":
-		if err := s.Reducer(os.Stdin, os.Stdout); err != nil {
-			return err
-		}
+		err = s.Reducer(os.Stdin, os.Stdout)
 	case "combiner":
 		s, ok := s.(Combiner)
 		if !ok {
 			return errors.New("step does not support Combiner interface")
 		}
-		if err := s.Combiner(os.Stdin, os.Stdout); err != nil {
-			return err
-		}
+		err = s.Combiner(os.Stdin, os.Stdout)
 	}
 	if *stage != "" {
 		r.auditCpuTime(fmt.Sprintf("%s[%d]", *stage, *step))
-		os.Exit(0)
+		if err != nil {
+			log.Printf("Error: %s", err)
+			os.Exit(1)
+		} else {
+			os.Exit(0)
+		}
 		return nil
 	}
 	if !*submitJob {

@@ -46,6 +46,7 @@ func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
 		for v := range kv.Values {
 			vv, err := v.Int64()
 			if err != nil {
+				gomrjob.Counter("example_mr", "non-int value", 1)
 				log.Printf("non-int value %s", err)
 			} else {
 				i += vv
@@ -53,6 +54,7 @@ func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
 		}
 		keyString, err := kv.Key.String()
 		if err != nil {
+			gomrjob.Counter("example_mr", "non-string key", 1)
 			log.Printf("non-string key %s", err)
 		}
 		out <- gomrjob.KeyValue{keyString, i}

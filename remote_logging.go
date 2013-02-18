@@ -14,7 +14,7 @@ func dialRemoteLogger(addr string) error {
 	if err != nil {
 		return err
 	}
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	conn, err := net.DialTimeout("tcp", tcpAddr.String(), time.Duration(5)*time.Second)
 	if err != nil {
 		return err
 	}

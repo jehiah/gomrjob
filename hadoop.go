@@ -153,7 +153,8 @@ func SubmitJob(j Job) error {
 		args = append(args, "-input", hdfsFile{f}.String())
 	}
 	for _, f := range j.CacheFiles {
-		args = append(args, "-files", hdfsFile{f}.String())
+		args = append(args, "-cacheFile", hdfsFile{f}.String())
+		// -file? --files?
 	}
 	args = append(args, "-output", hdfsFile{j.Output}.String())
 	if j.Mapper != "" {

@@ -17,14 +17,14 @@ func JsonInputProtocol(input io.Reader) <-chan *simplejson.Json {
 	out := make(chan *simplejson.Json, 100)
 	go func() {
 		var line []byte
-		var err error
+		var lineErr error
 		r := bufio.NewReaderSize(input, 1024*1024*2)
 		for {
-			if err == io.EOF {
+			if lineErr == io.EOF {
 				break
 			}
-			line, err = r.ReadBytes('\n')
-			if len(line) == 0 {
+			line, lineErr = r.ReadBytes('\n')
+			if len(line) <= 1 {
 				continue
 			}
 			data, err := simplejson.NewJson(line)
@@ -52,21 +52,21 @@ func JsonInternalInputProtocol(input io.Reader) <-chan JsonKeyChan {
 	var jsonChan chan *simplejson.Json
 	go func() {
 		var line []byte
-		var err error
+		var lineErr error
 		r := bufio.NewReaderSize(input, 1024*1024*2)
 		var lastKey []byte
 		for {
-			if err == io.EOF {
+			if lineErr == io.EOF {
 				break
 			}
-			line, err = r.ReadBytes('\n')
-			if len(line) == 0 {
+			line, lineErr = r.ReadBytes('\n')
+			if len(line) <= 1 {
 				continue
 			}
 			chunks := bytes.SplitAfterN(line, []byte("\t"), 2)
 			if len(chunks) != 2 {
-				log.Printf("invalid line. no tab - %s", line)
 				Counter("JsonInternalInputProtocol", "invalid line - no tab", 1)
+				log.Printf("invalid line. no tab - %s", line)
 				lastKey = lastKey[:0]
 				continue
 			}
@@ -121,6 +121,7 @@ func RawKeyValueOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyVal
 
 // a json Key, and a json value
 func JsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyValue) {
+	w := bufio.NewWriter(writer)
 	in := make(chan KeyValue)
 	tab := []byte("\t")
 	newline := []byte("\n")
@@ -140,11 +141,12 @@ func JsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyVa
 				log.Printf("%s - failed encoding %v", err, kv.Value)
 				continue
 			}
-			writer.Write(kBytes)
-			writer.Write(tab)
-			writer.Write(vBytes)
-			writer.Write(newline)
+			w.Write(kBytes)
+			w.Write(tab)
+			w.Write(vBytes)
+			w.Write(newline)
 		}
+		w.Flush()
 		wg.Done()
 	}()
 	return &wg, in

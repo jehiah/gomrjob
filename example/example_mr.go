@@ -70,6 +70,7 @@ func main() {
 	runner := gomrjob.NewRunner()
 	runner.Name = "test-gomrjob"
 	runner.InputFiles = append(runner.InputFiles, *input)
+	runner.ReducerTasks = 3
 	runner.Steps = append(runner.Steps, &MRStep{})
 	err := runner.Run()
 	if err != nil {

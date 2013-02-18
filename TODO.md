@@ -1,10 +1,7 @@
 
 * sample input files for local trial run (non hadoop mode)
-* multi-step jobs
-    * chain input/output
-    * skip map/reduce on some steps (ie: 2nd reduce phase)
-* prefix step/stage for error logs
 * limit amount of error logs written
+* disable the combined logger
 * support inline combiner [before serializing]
 * finish protocol tests
 * test hadoop commands

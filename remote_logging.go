@@ -6,20 +6,20 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 // redirect log to a remote port
-func dialRemoteLogger(addr string) error {
+func dialRemoteLogger(addr string) (io.Writer, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	conn, err := net.DialTimeout("tcp", tcpAddr.String(), time.Duration(5)*time.Second)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	log.SetOutput(conn)
-	return nil
+	return conn, nil
 }
 
 // listen for log messages, and copy them to stderr
@@ -41,6 +41,7 @@ func startRemoteLogListner() string {
 				// handle error
 				continue
 			}
+			log.Printf("accepted remote logging connection from %s", conn.RemoteAddr())
 			go io.Copy(os.Stderr, conn)
 		}
 	}()
@@ -52,4 +53,24 @@ func startRemoteLogListner() string {
 	}
 
 	return strings.Replace(listenAddr, "0.0.0.0", hostname, 1)
+}
+
+type prefixLogger struct {
+	prefix []byte
+	w      io.Writer
+}
+
+func (p *prefixLogger) Write(b []byte) (n int, err error) {
+	n, err = p.w.Write(p.prefix)
+	if err != nil {
+		return n, err
+	}
+	nn, err := p.w.Write(b)
+	return n + nn, err
+}
+
+// NewPrefixLogger returns a writer that behaves like w except
+// that it writes a prefix before each write
+func newPrefixLogger(prefix string, w io.Writer) io.Writer {
+	return &prefixLogger{[]byte(prefix), w}
 }

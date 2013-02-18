@@ -146,21 +146,28 @@ func (r *Runner) auditCpuTime(stage string) {
 }
 
 func (r *Runner) Run() error {
+	if *step >= len(r.Steps) {
+		return fmt.Errorf("invalid --step=%d (max %d)", *step, len(r.Steps))
+	}
 	if *remoteLogger != "" {
-		err := dialRemoteLogger(*remoteLogger)
+		conn, err := dialRemoteLogger(*remoteLogger)
 		if err != nil {
 			if *stage == "" {
 				Status(fmt.Sprintf("error dialing remote logger %s", err))
 			} else {
 				log.Printf("failed connecting to remote logger", err)
 			}
+		} else {
+			hostname, _ := os.Hostname()
+			w := newPrefixLogger(fmt.Sprintf("[%s %s:%d] ", hostname, *stage, *step), conn)
+			log.SetOutput(w)
 		}
-	}
-	if *step >= len(r.Steps) {
-		return fmt.Errorf("invalid --step=%d (max %d)", *step, len(r.Steps))
 	}
 	s := r.Steps[*step]
 
+	if *stage != "" {
+		log.Printf("starting %s step %d", *stage, *step)
+	}
 	var err error
 	switch *stage {
 	case "mapper":

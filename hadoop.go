@@ -71,7 +71,7 @@ func Mkdir(remote string) error {
 // -z check to see if the file is zero length. Return 0 if true. 
 // -d check to see if the path is directory. Return 0 if true. 
 func Test(flag string, remote string) error {
-	cmd := exec.Command(hadoopBinPath("hadoop"), "fs", flag, remote)
+	cmd := exec.Command(hadoopBinPath("hadoop"), "fs", "-test", flag, remote)
 	log.Print(cmd.Args)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr

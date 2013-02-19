@@ -101,6 +101,60 @@ func JsonInternalInputProtocol(input io.Reader) <-chan JsonKeyChan {
 	return out
 }
 
+type RawJsonKeyChan struct {
+	Key    []byte
+	Values <-chan *simplejson.Json
+}
+
+// returns an input channel with a simplejson.Json key, and a channel of simplejson.Json Values which includes the key
+// Each channel will be closed when no data is finished. Errors will be logged
+func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
+	out := make(chan RawJsonKeyChan)
+	var jsonChan chan *simplejson.Json
+	go func() {
+		var line []byte
+		var lineErr error
+		r := bufio.NewReaderSize(input, 1024*1024*2)
+		var lastKey []byte
+		for {
+			if lineErr == io.EOF {
+				break
+			}
+			line, lineErr = r.ReadBytes('\n')
+			if len(line) <= 1 {
+				continue
+			}
+			chunks := bytes.SplitAfterN(line, []byte("\t"), 2)
+			if len(chunks) != 2 {
+				Counter("RawJsonInternalInputProtocol", "invalid line - no tab", 1)
+				log.Printf("invalid line. no tab - %s", line)
+				lastKey = lastKey[:0]
+				continue
+			}
+			if !bytes.Equal(chunks[0], lastKey) {
+				if jsonChan != nil {
+					close(jsonChan)
+				}
+				lastKey = chunks[0]
+				jsonChan = make(chan *simplejson.Json, 100)
+				out <- RawJsonKeyChan{lastKey, jsonChan}
+			}
+			data, err := simplejson.NewJson(chunks[1])
+			if err != nil {
+				Counter("RawJsonInternalInputProtocol", "invalid line", 1)
+				log.Printf("%s - failed parsing %s", err, line)
+			} else {
+				jsonChan <- data
+			}
+		}
+		if jsonChan != nil {
+			close(jsonChan)
+		}
+		close(out)
+	}()
+	return out
+}
+
 type KeyValue struct {
 	Key   interface{}
 	Value interface{}
@@ -138,6 +192,39 @@ func JsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyVa
 			vBytes, err := json.Marshal(kv.Value)
 			if err != nil {
 				Counter("JsonInternalOutputProtocol", "unable to json encode value", 1)
+				log.Printf("%s - failed encoding %v", err, kv.Value)
+				continue
+			}
+			w.Write(kBytes)
+			w.Write(tab)
+			w.Write(vBytes)
+			w.Write(newline)
+		}
+		w.Flush()
+		wg.Done()
+	}()
+	return &wg, in
+}
+
+// a raw byte Key, and a json value
+func RawJsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyValue) {
+	w := bufio.NewWriter(writer)
+	in := make(chan KeyValue)
+	tab := []byte("\t")
+	newline := []byte("\n")
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		for kv := range in {
+			kBytes, ok := kv.Key.([]byte)
+			if !ok {
+				Counter("RawJsonInternalOutputProtocol", "key is not []byte", 1)
+				log.Printf("failed type casting %v", kv.Key)
+				continue
+			}
+			vBytes, err := json.Marshal(kv.Value)
+			if err != nil {
+				Counter("RawJsonInternalOutputProtocol", "unable to json encode value", 1)
 				log.Printf("%s - failed encoding %v", err, kv.Value)
 				continue
 			}

@@ -18,6 +18,7 @@ type MRStep struct {
 
 // An example Map function. It consumes json data and yields a value for each line
 func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
+	log.Printf("map_input_file %s", os.Getenv("map_input_file"))
 	wg, out := gomrjob.JsonInternalOutputProtocol(w)
 	for data := range gomrjob.JsonInputProtocol(r) {
 		gomrjob.Counter("example_mr", "Map Lines Read", 1)
@@ -38,10 +39,35 @@ func (s *MRStep) Combiner(r io.Reader, w io.Writer) error {
 	return s.Reducer(r, w)
 }
 
-// A simple reduce function that counts keys
+// // A simple reduce function that counts keys
+// func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
+// 	wg, out := gomrjob.JsonInternalOutputProtocol(w)
+// 	for kv := range gomrjob.JsonInternalInputProtocol(r) {
+// 		var i int64
+// 		for v := range kv.Values {
+// 			vv, err := v.Int64()
+// 			if err != nil {
+// 				gomrjob.Counter("example_mr", "non-int value", 1)
+// 				log.Printf("non-int value %s", err)
+// 			} else {
+// 				i += vv
+// 			}
+// 		}
+// 		keyString, err := kv.Key.String()
+// 		if err != nil {
+// 			gomrjob.Counter("example_mr", "non-string key", 1)
+// 			log.Printf("non-string key %s", err)
+// 		}
+// 		out <- gomrjob.KeyValue{keyString, i}
+// 	}
+// 	close(out)
+// 	wg.Wait()
+// 	return nil
+// }
+
 func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
-	wg, out := gomrjob.JsonInternalOutputProtocol(w)
-	for kv := range gomrjob.JsonInternalInputProtocol(r) {
+	wg, out := gomrjob.RawJsonInternalOutputProtocol(w)
+	for kv := range gomrjob.RawJsonInternalInputProtocol(r) {
 		var i int64
 		for v := range kv.Values {
 			vv, err := v.Int64()
@@ -52,12 +78,7 @@ func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
 				i += vv
 			}
 		}
-		keyString, err := kv.Key.String()
-		if err != nil {
-			gomrjob.Counter("example_mr", "non-string key", 1)
-			log.Printf("non-string key %s", err)
-		}
-		out <- gomrjob.KeyValue{keyString, i}
+		out <- gomrjob.KeyValue{kv.Key, i}
 	}
 	close(out)
 	wg.Wait()

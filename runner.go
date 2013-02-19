@@ -97,7 +97,7 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
 	processName := filepath.Base(r.exePath)
 	taskOptions := r.PassThroughOptions[:]
 	if loggerAddress != "" {
-		taskOptions = append(taskOptions, fmt.Sprintf(" --remote-logger=%s", loggerAddress))
+		taskOptions = append(taskOptions, fmt.Sprintf("--remote-logger=%s", loggerAddress))
 	}
 	taskOptions = append(taskOptions, fmt.Sprintf("--step=%d", stepNumber))
 	taskString := fmt.Sprintf("%s %s", processName, strings.Join(taskOptions, " "))

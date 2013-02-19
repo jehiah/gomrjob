@@ -65,6 +65,19 @@ func Mkdir(remote string) error {
 	return cmd.Run()
 }
 
+// http://hadoop.apache.org/docs/r1.1.1/file_system_shell.html#test
+// flag is 
+// -e check to see if the file exists. Return 0 if true. 
+// -z check to see if the file is zero length. Return 0 if true. 
+// -d check to see if the path is directory. Return 0 if true. 
+func Test(flag string, remote string) error {
+	cmd := exec.Command(hadoopBinPath("hadoop"), "fs", flag, remote)
+	log.Print(cmd.Args)
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 func Put(args ...string) error {
 	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-put"}, args...)...)
 	log.Print(cmd.Args)

@@ -3,7 +3,6 @@ package gomrjob
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -94,16 +93,13 @@ func RMR(args ...string) error {
 	return cmd.Run()
 }
 
-func PutStream(r io.Reader, args ...string) error {
+func PutStream(args ...string) *exec.Cmd {
 	if len(args) < 1 || args[0] != "-" {
 		args = append([]string{"-"}, args...) // prepend w/ stdin flag
 	}
 	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-put"}, args...)...)
 	log.Print(cmd.Args)
-	cmd.Stdin = r
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return cmd
 }
 
 func Copy(args ...string) error {
@@ -114,12 +110,10 @@ func Copy(args ...string) error {
 	return cmd.Run()
 }
 
-func Cat(w io.Writer, args ...string) error {
+func Cat(args ...string) *exec.Cmd {
 	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-cat"}, args...)...)
 	log.Print(cmd.Args)
-	cmd.Stdout = w
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return cmd
 }
 
 type hdfsFile struct {

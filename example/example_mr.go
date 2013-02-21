@@ -98,7 +98,10 @@ func main() {
 		gomrjob.Status(fmt.Sprintf("Run error %s", err))
 		log.Fatalf("Run error %s", err)
 	}
-	gomrjob.Cat(os.Stdout, fmt.Sprintf("%s/part-*", runner.Output))
+	cmd := gomrjob.Cat(fmt.Sprintf("%s/part-*", runner.Output))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run() // err?
 	// runner.Cleanup()
 
 }

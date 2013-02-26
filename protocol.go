@@ -63,7 +63,7 @@ func JsonInternalInputProtocol(input io.Reader) <-chan JsonKeyChan {
 			if len(line) <= 1 {
 				continue
 			}
-			chunks := bytes.SplitAfterN(line, []byte("\t"), 2)
+			chunks := bytes.SplitN(line, []byte("\t"), 2)
 			if len(chunks) != 2 {
 				Counter("JsonInternalInputProtocol", "invalid line - no tab", 1)
 				log.Printf("invalid line. no tab - %s", line)
@@ -124,7 +124,7 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 			if len(line) <= 1 {
 				continue
 			}
-			chunks := bytes.SplitAfterN(line, []byte("\t"), 2)
+			chunks := bytes.SplitN(line, []byte("\t"), 2)
 			if len(chunks) != 2 {
 				Counter("RawJsonInternalInputProtocol", "invalid line - no tab", 1)
 				log.Printf("invalid line. no tab - %s", line)

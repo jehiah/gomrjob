@@ -46,6 +46,7 @@ type Runner struct {
 	PassThroughOptions []string
 	tmpPath            string
 	exePath            string
+	CompressOutput     bool
 }
 
 func NewRunner() *Runner {
@@ -102,6 +103,11 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
 	taskOptions = append(taskOptions, fmt.Sprintf("--step=%d", stepNumber))
 	taskString := fmt.Sprintf("%s %s", processName, strings.Join(taskOptions, " "))
 
+	var jobOptions []string
+	if r.CompressOutput {
+		jobOptions = []string{"-D mapred.output.compress=true", "-D mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCode"}
+	}
+
 	j := Job{
 		Name:         r.Name,
 		CacheFiles:   []string{fmt.Sprintf("hdfs://%s#%s", r.exePath, processName)},
@@ -109,6 +115,7 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
 		Input:        input,
 		Output:       output,
 		Reducer:      fmt.Sprintf("%s --stage=reducer", taskString),
+		Options:      jobOptions,
 	}
 	if _, ok := step.(Mapper); ok {
 		j.Mapper = fmt.Sprintf("%s --stage=mapper", taskString)

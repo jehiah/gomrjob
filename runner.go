@@ -105,7 +105,8 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
 
 	var jobOptions []string
 	if r.CompressOutput {
-		jobOptions = []string{"-D mapred.output.compress=true", "-D mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCode"}
+		jobOptions = append(jobOptions, "-D", "mapred.output.compress=true")
+		jobOptions = append(jobOptions, "-D", "mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCode")
 	}
 
 	j := Job{

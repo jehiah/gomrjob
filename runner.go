@@ -109,6 +109,7 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
 		jobOptions = append(jobOptions, "-D", "mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCodec")
 	}
 
+	// TODO: mangle r.Name to add the step
 	j := Job{
 		Name:         r.Name,
 		CacheFiles:   []string{fmt.Sprintf("hdfs://%s#%s", r.exePath, processName)},

@@ -153,7 +153,6 @@ func SubmitJob(j Job) error {
 		args = append(args, j.Options...)
 	}
 	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", j.Name))
-	// -D mapred.map.tasks=1
 	args = append(args, "-D", fmt.Sprintf("mapred.reduce.tasks=%d", j.ReducerTasks))
 	// -cmdenv name=value	// Pass env var to streaming commands
 
@@ -167,6 +166,8 @@ func SubmitJob(j Job) error {
 	args = append(args, "-output", hdfsFile{j.Output}.String())
 	if j.Mapper != "" {
 		args = append(args, "-mapper", j.Mapper)
+	} else {
+		args = append(args, "-D", "mapred.map.tasks=0")
 	}
 	if j.Combiner != "" {
 		args = append(args, "-combiner", j.Combiner)

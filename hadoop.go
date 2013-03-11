@@ -142,6 +142,9 @@ type Job struct {
 func SubmitJob(j Job) error {
 	// http://hadoop.apache.org/docs/r0.20.2/streaming.html
 	// http://hadoop.apache.org/docs/r1.1.1/streaming.html
+	if j.Mapper == "" || j.Reducer == "" {
+		return errors.New("missing argument Mapper or Reducer")
+	}
 	jar, err := StreamingJar()
 	if err != nil {
 		log.Printf("failed finding streaming jar %s", err)
@@ -156,10 +159,6 @@ func SubmitJob(j Job) error {
 	args = append(args, "-D", fmt.Sprintf("mapred.reduce.tasks=%d", j.ReducerTasks))
 	// -cmdenv name=value	// Pass env var to streaming commands
 
-	if j.Mapper == "" {
-		args = append(args, "-D", "mapred.map.tasks=0")
-	}
-
 	for _, f := range j.Input {
 		args = append(args, "-input", hdfsFile{f}.String())
 	}
@@ -168,15 +167,11 @@ func SubmitJob(j Job) error {
 		// -file? --files?
 	}
 	args = append(args, "-output", hdfsFile{j.Output}.String())
-	if j.Mapper != "" {
-		args = append(args, "-mapper", j.Mapper)
-	} 
+	args = append(args, "-mapper", j.Mapper)
 	if j.Combiner != "" {
 		args = append(args, "-combiner", j.Combiner)
 	}
-	if j.Reducer != "" {
-		args = append(args, "-reducer", j.Reducer)
-	}
+	args = append(args, "-reducer", j.Reducer)
 	cmd := exec.Command(hadoopBinPath("hadoop"), args...)
 	log.Print(cmd.Args)
 	cmd.Stdout = os.Stdout

@@ -116,11 +116,9 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
 		ReducerTasks: r.ReducerTasks,
 		Input:        input,
 		Output:       output,
+		Mapper:       fmt.Sprintf("%s --stage=mapper", taskString),
 		Reducer:      fmt.Sprintf("%s --stage=reducer", taskString),
 		Options:      jobOptions,
-	}
-	if _, ok := step.(Mapper); ok {
-		j.Mapper = fmt.Sprintf("%s --stage=mapper", taskString)
 	}
 	if _, ok := step.(Combiner); ok {
 		j.Combiner = fmt.Sprintf("%s --stage=combiner", taskString)
@@ -182,9 +180,11 @@ func (r *Runner) Run() error {
 	case "mapper":
 		s, ok := s.(Mapper)
 		if !ok {
-			return errors.New("step does not support Mapper interface")
+			// if a step does not support mapper, it's the identity mapper of just echo std -> stdout
+			_, err = io.Copy(os.Stdout, os.Stdin)
+		} else {
+			err = s.Mapper(os.Stdin, os.Stdout)
 		}
-		err = s.Mapper(os.Stdin, os.Stdout)
 	case "reducer":
 		err = s.Reducer(os.Stdin, os.Stdout)
 	case "combiner":

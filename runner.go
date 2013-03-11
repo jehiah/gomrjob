@@ -110,8 +110,12 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
 	}
 
 	// TODO: mangle r.Name to add the step
+	name := r.Name
+	if len(r.Steps) != 1 {
+		name = fmt.Sprintf("%s-step_%d", name, stepNumber)
+	}
 	j := Job{
-		Name:         r.Name,
+		Name:         name,
 		CacheFiles:   []string{fmt.Sprintf("hdfs://%s#%s", r.exePath, processName)},
 		ReducerTasks: r.ReducerTasks,
 		Input:        input,

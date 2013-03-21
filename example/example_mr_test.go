@@ -15,7 +15,7 @@ func TestPutMessage(t *testing.T) {
 	log.SetOutput(ioutil.Discard)
 	log.SetOutput(os.Stdout)
 
-	step := &MRStep{"key_field"}
+	step := &JsonEntryCounter{"key_field"}
 	in := `{"key_field":"a"}
 			{"key_field":"z"}
 			{"key_field":"another"}

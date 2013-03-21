@@ -35,6 +35,7 @@ type sortedData struct{ dataLines }
 
 func (s sortedData) Less(i, j int) bool { return bytes.Compare(s.dataLines[i], s.dataLines[j]) == -1 }
 
+// a simple line sort
 func sortPhase(in io.Reader, out io.Writer) error {
 	var data [][]byte
 	r := bufio.NewReader(in)
@@ -59,7 +60,7 @@ func sortPhase(in io.Reader, out io.Writer) error {
 
 // test that a geven step, and input generates a given output
 func TestMapReduceStep(t *testing.T, s Step, in io.Reader, out io.Reader) []byte {
-
+	// TODO: test the combiner (if present)
 	// in -> map -> sort -> reduce -> out
 	var wg sync.WaitGroup
 
@@ -100,7 +101,8 @@ func TestMapReduceStep(t *testing.T, s Step, in io.Reader, out io.Reader) []byte
 	}
 	result := reduceOut.Bytes()
 	if !bytes.Equal(result, outBytes) {
-		t.Errorf("output does not expected output")
+		// TODO: iterate line by line for better feedback on errors
+		t.Errorf("output does not match expected output")
 	}
 	return result
 }

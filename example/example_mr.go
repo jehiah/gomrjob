@@ -13,12 +13,12 @@ var (
 	input = flag.String("input", "", "path to hdfs input file")
 )
 
-type MRStep struct {
+type JsonEntryCounter struct {
 	KeyField string
 }
 
 // An example Map function. It consumes json data and yields a value for each line
-func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
+func (s *JsonEntryCounter) Mapper(r io.Reader, w io.Writer) error {
 	log.Printf("map_input_file %s", os.Getenv("map_input_file"))
 	wg, out := gomrjob.JsonInternalOutputProtocol(w)
 	for data := range gomrjob.JsonInputProtocol(r) {
@@ -36,7 +36,7 @@ func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
 }
 
 // just re-use the reducer as the combiner
-func (s *MRStep) Combiner(r io.Reader, w io.Writer) error {
+func (s *JsonEntryCounter) Combiner(r io.Reader, w io.Writer) error {
 	return s.Reducer(r, w)
 }
 
@@ -66,7 +66,7 @@ func (s *MRStep) Combiner(r io.Reader, w io.Writer) error {
 // 	return nil
 // }
 
-func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
+func (s *JsonEntryCounter) Reducer(r io.Reader, w io.Writer) error {
 	wg, out := gomrjob.RawJsonInternalOutputProtocol(w)
 	for kv := range gomrjob.RawJsonInternalInputProtocol(r) {
 		var i int64

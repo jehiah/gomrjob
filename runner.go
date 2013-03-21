@@ -10,7 +10,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -20,22 +19,6 @@ var (
 	remoteLogger = flag.String("remote-logger", "", "address for remote logger")
 	submitJob    = flag.Bool("submit-job", false, "submit the job")
 )
-
-type Mapper interface {
-	Mapper(io.Reader, io.Writer) error
-}
-
-type Reducer interface {
-	Reducer(io.Reader, io.Writer) error
-}
-
-type Combiner interface {
-	Combiner(io.Reader, io.Writer) error
-}
-
-type Step interface {
-	Reducer
-}
 
 type Runner struct {
 	Name               string
@@ -109,7 +92,6 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
 		jobOptions = append(jobOptions, "-D", "mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCodec")
 	}
 
-	// TODO: mangle r.Name to add the step
 	name := r.Name
 	if len(r.Steps) != 1 {
 		name = fmt.Sprintf("%s-step_%d", name, stepNumber)
@@ -141,19 +123,6 @@ func (r *Runner) copyRunningBinaryToHdfs() error {
 		return fmt.Errorf("error copying %s to hdfs %s", r.exePath, err)
 	}
 	return nil
-}
-
-func (r *Runner) auditCpuTime(stage string) {
-	var u syscall.Rusage
-	err := syscall.Getrusage(syscall.RUSAGE_SELF, &u)
-	if err != nil {
-		log.Printf("error getting Rusage: %s", err)
-		return
-	}
-	userTime := time.Duration(u.Utime.Nano()) * time.Nanosecond
-	systemTime := time.Duration(u.Stime.Nano()) * time.Nanosecond
-	Counter("gomrjob", fmt.Sprintf("%s userTime (ms)", stage), int64(userTime/time.Millisecond))
-	Counter("gomrjob", fmt.Sprintf("%s systemTime (ms)", stage), int64(systemTime/time.Millisecond))
 }
 
 func (r *Runner) Run() error {
@@ -199,7 +168,7 @@ func (r *Runner) Run() error {
 		err = s.Combiner(os.Stdin, os.Stdout)
 	}
 	if *stage != "" {
-		r.auditCpuTime(fmt.Sprintf("%s[%d]", *stage, *step))
+		auditCpuTime("gomrjob", fmt.Sprintf("%s[%d]", *stage, *step))
 		if err != nil {
 			log.Printf("Error: %s", err)
 			os.Exit(1)

@@ -1,0 +1,30 @@
+package main
+
+import (
+	// "github.com/bmizerany/assert"
+	"../"
+	"log"
+	"os"
+	"io/ioutil"
+	"testing"
+	"bytes"
+)
+
+// ensure that we can push a message through a topic and get it out of a channel
+func TestPutMessage(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+	log.SetOutput(os.Stdout)
+
+	step := &MRStep{"key_field"}
+	in := `{"key_field":"a"}
+			{"key_field":"z"}
+			{"key_field":"another"}
+			{"key_field":"z"}
+			{"key_field":"z"}
+			{"key_field":"a"}`
+	out := `"a"	2
+"another"	1
+"z"	3
+`
+	gomrjob.TestMapReduceStep(t, step, bytes.NewBufferString(in), bytes.NewBufferString(out))
+}

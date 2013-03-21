@@ -14,6 +14,7 @@ var (
 )
 
 type MRStep struct {
+	KeyField string
 }
 
 // An example Map function. It consumes json data and yields a value for each line
@@ -22,7 +23,7 @@ func (s *MRStep) Mapper(r io.Reader, w io.Writer) error {
 	wg, out := gomrjob.JsonInternalOutputProtocol(w)
 	for data := range gomrjob.JsonInputProtocol(r) {
 		gomrjob.Counter("example_mr", "Map Lines Read", 1)
-		key, err := data.Get("api_path").String()
+		key, err := data.Get(s.KeyField).String()
 		if err != nil {
 			gomrjob.Counter("example_mr", "Missing Key", 1)
 		} else {
@@ -92,7 +93,7 @@ func main() {
 	runner.Name = "test-gomrjob"
 	runner.InputFiles = append(runner.InputFiles, *input)
 	runner.ReducerTasks = 3
-	runner.Steps = append(runner.Steps, &MRStep{})
+	runner.Steps = append(runner.Steps, &MRStep{"api_path"})
 	err := runner.Run()
 	if err != nil {
 		gomrjob.Status(fmt.Sprintf("Run error %s", err))

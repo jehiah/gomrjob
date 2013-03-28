@@ -93,7 +93,7 @@ func main() {
 	runner.Name = "test-gomrjob"
 	runner.InputFiles = append(runner.InputFiles, *input)
 	runner.ReducerTasks = 3
-	runner.Steps = append(runner.Steps, &MRStep{"api_path"})
+	runner.Steps = append(runner.Steps, &JsonEntryCounter{"api_path"})
 	err := runner.Run()
 	if err != nil {
 		gomrjob.Status(fmt.Sprintf("Run error %s", err))

@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"sort"
+	"log"
 	"sync"
 	"testing"
 )
@@ -99,9 +100,12 @@ func TestMapReduceStep(t *testing.T, s Step, in io.Reader, out io.Reader) []byte
 		t.Errorf("failed reading expected output %s", err)
 		return nil
 	}
-	result := reduceOut.Bytes()
+	outBytes = bytes.TrimSpace(outBytes)
+	result := bytes.TrimSpace(reduceOut.Bytes())
 	if !bytes.Equal(result, outBytes) {
 		// TODO: iterate line by line for better feedback on errors
+		log.Printf("got output:\n%s", result)
+		log.Printf("expected output:\n%s", outBytes)
 		t.Errorf("output does not match expected output")
 	}
 	return result

@@ -155,6 +155,37 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 	return out
 }
 
+
+// returns an input channel with a raw key, value without collating keys
+func RawInternalInputProtocol(input io.Reader) <-chan KeyValue {
+	out := make(chan KeyValue)
+	go func() {
+		var line []byte
+		var lineErr error
+		r := bufio.NewReaderSize(input, 1024*1024*2)
+		var lastKey []byte
+		for {
+			if lineErr == io.EOF {
+				break
+			}
+			line, lineErr = r.ReadBytes('\n')
+			if len(line) <= 1 {
+				continue
+			}
+			chunks := bytes.SplitN(line, []byte("\t"), 2)
+			if len(chunks) != 2 {
+				Counter("RawInternalInputProtocol", "invalid line - no tab", 1)
+				log.Printf("invalid line. no tab - %s", line)
+				lastKey = lastKey[:0]
+				continue
+			}
+			out <- KeyValue{chunks[0], chunks[1]}
+		}
+		close(out)
+	}()
+	return out
+}
+
 type KeyValue struct {
 	Key   interface{}
 	Value interface{}

@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
-	"sort"
 	"log"
+	"sort"
 	"sync"
 	"testing"
 )

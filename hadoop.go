@@ -56,12 +56,16 @@ func StreamingJar() (string, error) {
 
 // http://hadoop.apache.org/docs/r0.20.2/hdfs_shell.html
 
-func Mkdir(remote string) error {
-	cmd := exec.Command(hadoopBinPath("hadoop"), "fs", "-mkdir", remote)
+func Cmd(command string, args ...string) error {
+	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", command}, args...)...)
 	log.Print(cmd.Args)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func Mkdir(remote string) error {
+	return Cmd("-mkdir", remote)
 }
 
 // http://hadoop.apache.org/docs/r1.1.1/file_system_shell.html#test
@@ -70,27 +74,19 @@ func Mkdir(remote string) error {
 // -z check to see if the file is zero length. Return 0 if true. 
 // -d check to see if the path is directory. Return 0 if true. 
 func Test(flag string, remote string) error {
-	cmd := exec.Command(hadoopBinPath("hadoop"), "fs", "-test", flag, remote)
-	log.Print(cmd.Args)
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return Cmd("-test", flag, remote)
 }
 
 func Put(args ...string) error {
-	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-put"}, args...)...)
-	log.Print(cmd.Args)
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return Cmd("-put", args...)
 }
 
 func RMR(args ...string) error {
-	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-rmr"}, args...)...)
-	log.Print(cmd.Args)
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return Cmd("-rmr", args...)
+}
+
+func Remove(args ...string) error {
+	return Cmd("-rm", args...)
 }
 
 func PutStream(args ...string) *exec.Cmd {
@@ -103,11 +99,7 @@ func PutStream(args ...string) *exec.Cmd {
 }
 
 func Copy(args ...string) error {
-	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-cp"}, args...)...)
-	log.Print(cmd.Args)
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return Cmd("-cp", args...)
 }
 
 func Cat(args ...string) *exec.Cmd {

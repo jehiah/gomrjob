@@ -155,7 +155,6 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 	return out
 }
 
-
 // returns an input channel with a raw key, value without collating keys
 func RawInternalInputProtocol(input io.Reader) <-chan KeyValue {
 	out := make(chan KeyValue)

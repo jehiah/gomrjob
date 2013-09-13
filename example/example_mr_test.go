@@ -1,13 +1,12 @@
 package main
 
 import (
-	// "github.com/bmizerany/assert"
-	"../"
+	"bytes"
+	"github.com/jehiah/gomrjob"
+	"io/ioutil"
 	"log"
 	"os"
-	"io/ioutil"
 	"testing"
-	"bytes"
 )
 
 // ensure that we can push a message through a topic and get it out of a channel

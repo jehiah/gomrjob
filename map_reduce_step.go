@@ -26,6 +26,9 @@ type Combiner interface {
 type Step interface {
 	Reducer
 }
+type StepReducerTasksCount interface {
+	NumberReducerTasks() int
+}
 
 type dataLines [][]byte
 
@@ -59,8 +62,7 @@ func sortPhase(in io.Reader, out io.Writer) error {
 	return nil
 }
 
-// test that a geven step, and input generates a given output
-func TestMapReduceStep(t *testing.T, s Step, in io.Reader, out io.Reader) []byte {
+func runReduceStep(t *testing.T, s Step, in io.Reader) []byte {
 	// TODO: test the combiner (if present)
 	// in -> map -> sort -> reduce -> out
 	var wg sync.WaitGroup
@@ -95,13 +97,43 @@ func TestMapReduceStep(t *testing.T, s Step, in io.Reader, out io.Reader) []byte
 		wg.Done()
 	}()
 	wg.Wait()
+	result := bytes.TrimSpace(reduceOut.Bytes())
+	return result
+}
+
+func TestMapReduceSteps(t *testing.T, ss []Step, in io.Reader, out io.Reader) []byte {
+	var result []byte
+	for i, s := range ss {
+		if i == 0 {
+			result = runReduceStep(t, s, in)
+		} else {
+			result = runReduceStep(t, s, bytes.NewBuffer(result))
+		}
+	}
 	outBytes, err := ioutil.ReadAll(out)
 	if err != nil {
 		t.Errorf("failed reading expected output %s", err)
 		return nil
 	}
 	outBytes = bytes.TrimSpace(outBytes)
-	result := bytes.TrimSpace(reduceOut.Bytes())
+	if !bytes.Equal(result, outBytes) {
+		// TODO: iterate line by line for better feedback on errors
+		log.Printf("got output:\n%s", result)
+		log.Printf("expected output:\n%s", outBytes)
+		t.Errorf("output does not match expected output")
+	}
+	return result
+}
+
+// test that a geven step, and input generates a given output
+func TestMapReduceStep(t *testing.T, s Step, in io.Reader, out io.Reader) []byte {
+	outBytes, err := ioutil.ReadAll(out)
+	if err != nil {
+		t.Errorf("failed reading expected output %s", err)
+		return nil
+	}
+	outBytes = bytes.TrimSpace(outBytes)
+	result := runReduceStep(t, s, in)
 	if !bytes.Equal(result, outBytes) {
 		// TODO: iterate line by line for better feedback on errors
 		log.Printf("got output:\n%s", result)

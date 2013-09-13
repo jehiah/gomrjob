@@ -54,11 +54,10 @@ func (r *Runner) Cleanup() error {
 	return RMR(r.tmpPath)
 }
 
-func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
+func (r *Runner) submitJob(loggerAddress string, stepNumber int, step Step) error {
 	if stepNumber >= len(r.Steps) || len(r.Steps) == 0 {
 		return fmt.Errorf("step %d out of range", stepNumber)
 	}
-	step := r.Steps[stepNumber]
 	var input []string
 	var output string
 
@@ -96,10 +95,17 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int) error {
 	if len(r.Steps) != 1 {
 		name = fmt.Sprintf("%s-step_%d", name, stepNumber)
 	}
+
+	// specify reducer tasks per step
+	reducerTasks := r.ReducerTasks
+	if step, ok := step.(StepReducerTasksCount); ok {
+		reducerTasks = step.NumberReducerTasks()
+	}
+
 	j := Job{
 		Name:         name,
 		CacheFiles:   []string{fmt.Sprintf("hdfs://%s#%s", r.exePath, processName)},
-		ReducerTasks: r.ReducerTasks,
+		ReducerTasks: reducerTasks,
 		Input:        input,
 		Output:       output,
 		Mapper:       fmt.Sprintf("%s --stage=mapper", taskString),
@@ -198,8 +204,8 @@ func (r *Runner) Run() error {
 		r.Output = fmt.Sprintf("%s/output", r.tmpPath)
 	}
 
-	for stepNumber, _ := range r.Steps {
-		if err := r.submitJob(loggerAddress, stepNumber); err != nil {
+	for stepNumber, step := range r.Steps {
+		if err := r.submitJob(loggerAddress, stepNumber, step); err != nil {
 			return fmt.Errorf("failed running Step %d = %s", stepNumber, err)
 		}
 	}

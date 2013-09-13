@@ -39,7 +39,7 @@ type sortedData struct{ dataLines }
 
 func (s sortedData) Less(i, j int) bool { return bytes.Compare(s.dataLines[i], s.dataLines[j]) == -1 }
 
-// a simple line sort
+// a simple line sort (handling missing trailing newline on input)
 func sortPhase(in io.Reader, out io.Writer) error {
 	var data [][]byte
 	r := bufio.NewReader(in)
@@ -57,7 +57,8 @@ func sortPhase(in io.Reader, out io.Writer) error {
 	}
 	sort.Sort(sortedData{data})
 	for _, line := range data {
-		out.Write(line)
+		out.Write(bytes.TrimRight(line, "\n"))
+		out.Write([]byte("\n"))
 	}
 	return nil
 }
@@ -68,19 +69,27 @@ func runReduceStep(t *testing.T, s Step, in io.Reader) []byte {
 	var wg sync.WaitGroup
 
 	sortIn, mapOut := io.Pipe()
+	var sortInReader io.Reader
+	sortInReader = sortIn
 	reduceIn, sortOut := io.Pipe()
 	reduceOut := bytes.NewBuffer([]byte{})
-	wg.Add(3)
+	wg.Add(2)
+	if _, ok := s.(Mapper); ok {
+		wg.Add(1)
+		go func() {
+			err := s.(Mapper).Mapper(in, mapOut)
+			if err != nil {
+				t.Errorf("mapper failed with %s", err)
+			}
+			mapOut.Close()
+			wg.Done()
+		}()
+	} else {
+		log.Printf("skipping mapper")
+		sortInReader = in
+	}
 	go func() {
-		err := s.(Mapper).Mapper(in, mapOut)
-		if err != nil {
-			t.Errorf("mapper failed with %s", err)
-		}
-		mapOut.Close()
-		wg.Done()
-	}()
-	go func() {
-		err := sortPhase(sortIn, sortOut)
+		err := sortPhase(sortInReader, sortOut)
 		if err != nil {
 			t.Errorf("sort failed with %s", err)
 		}

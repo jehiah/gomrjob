@@ -157,7 +157,7 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 
 // returns an input channel with a raw key, value without collating keys
 func RawInternalInputProtocol(input io.Reader) <-chan KeyValue {
-	out := make(chan KeyValue)
+	out := make(chan KeyValue, 100)
 	go func() {
 		var line []byte
 		var lineErr error
@@ -191,13 +191,15 @@ type KeyValue struct {
 }
 
 func RawKeyValueOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyValue) {
-	in := make(chan KeyValue)
+	w := bufio.NewWriter(writer)
+	in := make(chan KeyValue, 100)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		for kv := range in {
-			fmt.Fprintf(writer, "%+v\t%+v\n", kv.Key, kv.Value)
+			fmt.Fprintf(w, "%+v\t%+v\n", kv.Key, kv.Value)
 		}
+		w.Flush()
 		wg.Done()
 	}()
 	return &wg, in
@@ -206,7 +208,7 @@ func RawKeyValueOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyVal
 // a json Key, and a json value
 func JsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyValue) {
 	w := bufio.NewWriter(writer)
-	in := make(chan KeyValue)
+	in := make(chan KeyValue, 100)
 	tab := []byte("\t")
 	newline := []byte("\n")
 	var wg sync.WaitGroup
@@ -239,7 +241,7 @@ func JsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyVa
 // a raw byte Key, and a json value
 func RawJsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyValue) {
 	w := bufio.NewWriter(writer)
-	in := make(chan KeyValue)
+	in := make(chan KeyValue, 100)
 	tab := []byte("\t")
 	newline := []byte("\n")
 	var wg sync.WaitGroup

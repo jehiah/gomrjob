@@ -73,6 +73,7 @@ func JsonInternalInputProtocol(input io.Reader) <-chan JsonKeyChan {
 			if !bytes.Equal(chunks[0], lastKey) {
 				if jsonChan != nil {
 					close(jsonChan)
+					jsonChan = nil
 				}
 				key, err := simplejson.NewJson(chunks[0])
 				if err != nil {
@@ -134,6 +135,7 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 			if !bytes.Equal(chunks[0], lastKey) {
 				if jsonChan != nil {
 					close(jsonChan)
+					jsonChan = nil
 				}
 				lastKey = chunks[0]
 				jsonChan = make(chan *simplejson.Json, 100)

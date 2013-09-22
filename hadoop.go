@@ -10,6 +10,11 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"io"
+	"time"
+	"bufio"
+	"strconv"
+	"bytes"
 )
 
 func HasHadoop() bool {
@@ -111,6 +116,94 @@ func Cat(args ...string) *exec.Cmd {
 	log.Print(cmd.Args)
 	return cmd
 }
+
+func Ls(args ...string) <- chan *HdfsFile {
+	out := make(chan *HdfsFile)
+	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-ls"}, args...)...)
+	rr, _ := cmd.StdoutPipe()
+	go func(cmd *exec.Cmd) {
+		err := cmd.Run()
+		if err != nil {
+			log.Printf("ls err %s", err)
+		}
+	}(cmd)
+	go parseLsOutput(rr, out)
+	return out
+}
+
+func parseLsOutput(in io.Reader, out chan *HdfsFile) {
+	var lineErr error
+	var line []byte
+	r := bufio.NewReader(in)
+	for {
+		if lineErr == io.EOF {
+			break
+		} else if lineErr != nil {
+			log.Printf("line:%s err: %s", line, lineErr)
+		}
+		line, lineErr = r.ReadBytes('\n')
+		if len(line) <= 1 || bytes.HasPrefix(line, []byte("Found ")) {
+			continue
+		}
+		chunks := splitLsOutput(line)
+		file, err := NewHdfsFile(chunks)
+		if err == nil {
+			out <- file
+		} else {
+			log.Printf("error %s on line %v", err, line)
+		}
+	}
+	close(out)
+}
+
+func NewHdfsFile(chunks []string) (*HdfsFile, error) {
+	// permissions number_of_replicas userid groupid filesize modification_date modification_time filename
+	var err error
+	if len(chunks) != 8 {
+		return nil, errors.New("invalid file parts")
+	}
+	file := &HdfsFile{}
+	log.Printf("split: %#v", chunks)
+	file.ReplicaCount, err = strconv.ParseInt(chunks[1], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	file.User = chunks[2]
+	file.Group = chunks[3]
+	file.Size, err = strconv.ParseInt(chunks[4], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	file.Modified, err = time.Parse("2006-01-02 15:04", chunks[5] + " " + chunks[6])
+	if err != nil {
+		return nil, err
+	}
+	file.Path = chunks[7]
+	return file, nil
+}
+
+func splitLsOutput(line []byte) []string {
+	var o []string
+	chunks := bytes.Split(bytes.TrimRight(line, "\n"), []byte(" "))
+	for _, chunk := range chunks {
+		if len(chunk) == 0 {
+			continue
+		}
+		o = append(o, string(chunk))
+	}
+	return o
+}
+
+type HdfsFile struct {
+	Permissions string
+	ReplicaCount int64
+	User		string
+	Group string
+	Size int64
+	Modified time.Time
+	Path string
+}
+
 
 type hdfsFile struct {
 	path string

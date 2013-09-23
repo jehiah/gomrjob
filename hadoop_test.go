@@ -1,9 +1,9 @@
 package gomrjob
 
 import (
+	"bytes"
 	"github.com/bmizerany/assert"
 	"testing"
-	"bytes"
 )
 
 func TestLs(t *testing.T) {
@@ -16,12 +16,12 @@ Found 1 items
 
 	out := make(chan *HdfsFile)
 	go parseLsOutput(bytes.NewBufferString(shuntData), out)
-	f1 := <- out
+	f1 := <-out
 	assert.Equal(t, f1.ReplicaCount, int64(3))
 	assert.Equal(t, f1.User, "jehiah")
 	assert.Equal(t, f1.Size, int64(176572))
 	assert.Equal(t, f1.Path, "hdfs:///user/jehiah/tmp/mrjob/a.jehiah.20130906.141932.492122/step-output/1/part-00008")
-	f2 := <- out
+	f2 := <-out
 	assert.Equal(t, f2.Path, "hdfs:///user/jehiah/tmp/mrjob/a.jehiah.20130906.141932.492122/step-output/1/part-00009")
 
 }

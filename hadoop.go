@@ -1,20 +1,20 @@
 package gomrjob
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
-	"strings"
-	"io"
-	"time"
-	"bufio"
 	"strconv"
-	"bytes"
+	"strings"
+	"time"
 )
 
 func HasHadoop() bool {
@@ -117,7 +117,7 @@ func Cat(args ...string) *exec.Cmd {
 	return cmd
 }
 
-func Ls(args ...string) <- chan *HdfsFile {
+func Ls(args ...string) <-chan *HdfsFile {
 	out := make(chan *HdfsFile)
 	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-ls"}, args...)...)
 	rr, _ := cmd.StdoutPipe()
@@ -174,7 +174,7 @@ func NewHdfsFile(chunks []string) (*HdfsFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	file.Modified, err = time.Parse("2006-01-02 15:04", chunks[5] + " " + chunks[6])
+	file.Modified, err = time.Parse("2006-01-02 15:04", chunks[5]+" "+chunks[6])
 	if err != nil {
 		return nil, err
 	}
@@ -195,15 +195,14 @@ func splitLsOutput(line []byte) []string {
 }
 
 type HdfsFile struct {
-	Permissions string
+	Permissions  string
 	ReplicaCount int64
-	User		string
-	Group string
-	Size int64
-	Modified time.Time
-	Path string
+	User         string
+	Group        string
+	Size         int64
+	Modified     time.Time
+	Path         string
 }
-
 
 type hdfsFile struct {
 	path string

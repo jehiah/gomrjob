@@ -118,7 +118,7 @@ func Cat(args ...string) *exec.Cmd {
 }
 
 func Ls(args ...string) <-chan *HdfsFile {
-	out := make(chan *HdfsFile)
+	out := make(chan *HdfsFile, 100)
 	cmd := exec.Command(hadoopBinPath("hadoop"), append([]string{"fs", "-ls"}, args...)...)
 	rr, _ := cmd.StdoutPipe()
 	go func(cmd *exec.Cmd) {
@@ -140,13 +140,14 @@ func parseLsOutput(in io.Reader, out chan *HdfsFile) {
 			break
 		} else if lineErr != nil {
 			log.Printf("line:%s err: %s", line, lineErr)
+			break
 		}
 		line, lineErr = r.ReadBytes('\n')
 		if len(line) <= 1 || bytes.HasPrefix(line, []byte("Found ")) {
 			continue
 		}
 		chunks := splitLsOutput(line)
-		file, err := NewHdfsFile(chunks)
+		file, err := newHdfsFile(chunks)
 		if err == nil {
 			out <- file
 		} else {
@@ -156,14 +157,14 @@ func parseLsOutput(in io.Reader, out chan *HdfsFile) {
 	close(out)
 }
 
-func NewHdfsFile(chunks []string) (*HdfsFile, error) {
+func newHdfsFile(chunks []string) (*HdfsFile, error) {
 	// permissions number_of_replicas userid groupid filesize modification_date modification_time filename
 	var err error
 	if len(chunks) != 8 {
 		return nil, errors.New("invalid file parts")
 	}
 	file := &HdfsFile{}
-	log.Printf("split: %#v", chunks)
+	// log.Printf("split: %#v", chunks)
 	file.ReplicaCount, err = strconv.ParseInt(chunks[1], 10, 64)
 	if err != nil {
 		return nil, err

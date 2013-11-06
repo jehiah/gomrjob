@@ -29,6 +29,7 @@ type Runner struct {
 	PassThroughOptions []string
 	tmpPath            string
 	exePath            string
+	MapReduceOptions   []string
 	CompressOutput     bool
 }
 
@@ -86,6 +87,9 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int, step Step) erro
 	taskString := fmt.Sprintf("%s %s", processName, strings.Join(taskOptions, " "))
 
 	var jobOptions []string
+	for _, option := range r.MapReduceOptions {
+		jobOptions = append(jobOptions, option)
+	}
 	if r.CompressOutput {
 		jobOptions = append(jobOptions, "-D", "mapred.output.compress=true")
 		jobOptions = append(jobOptions, "-D", "mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCodec")

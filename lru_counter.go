@@ -140,7 +140,7 @@ func (l *list) grow() (i int) {
 // func (l *list) moveToFront(i int) {
 //     nf := &l.links[i]
 //     of := &l.links[l.front]
-// 
+//
 //     nf.prev = l.front
 //     of.next = i
 //     l.front = i

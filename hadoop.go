@@ -241,11 +241,11 @@ func SubmitJob(j Job) error {
 	}
 
 	args := []string{"jar", jar}
+	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", j.Name))
+	args = append(args, "-D", fmt.Sprintf("mapred.reduce.tasks=%d", j.ReducerTasks))
 	if len(j.Options) > 0 {
 		args = append(args, j.Options...)
 	}
-	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", j.Name))
-	args = append(args, "-D", fmt.Sprintf("mapred.reduce.tasks=%d", j.ReducerTasks))
 	// -cmdenv name=value	// Pass env var to streaming commands
 
 	for _, f := range j.Input {

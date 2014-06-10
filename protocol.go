@@ -40,6 +40,32 @@ func JsonInputProtocol(input io.Reader) <-chan *simplejson.Json {
 	return out
 }
 
+// returns a channel of []byte's. This channel will be closed
+// when the input stream closes. Errors will be logged
+func RawInputProtocol(input io.Reader) <-chan []byte {
+	out := make(chan []byte, 100)
+	go func() {
+		var line []byte
+		var lineErr error
+		r := bufio.NewReaderSize(input, 1024*1024*2)
+		for {
+			if lineErr == io.EOF {
+				break
+			}
+			line, lineErr = r.ReadBytes('\n')
+			if len(line) <= 1 {
+				continue
+			} else if lineErr != nil {
+				log.Printf("%s - failed parsing %s", lineErr, line)
+				continue
+			}
+			out <- line
+		}
+		close(out)
+	}()
+	return out
+}
+
 type JsonKeyChan struct {
 	Key    *simplejson.Json
 	Values <-chan *simplejson.Json

@@ -138,6 +138,19 @@ func (r *Runner) copyRunningBinaryToHdfs() error {
 	return nil
 }
 
+
+// return which stage the runner is executing as
+func (r *Runner) Stage() string {
+	switch *stage {
+	case "mapper", "reducer", "combiner":
+		return *stage
+	}
+	if *submitJob {
+		return "submit-job"
+	}
+	return "unknown"
+}
+
 func (r *Runner) Run() error {
 	if *step >= len(r.Steps) {
 		return fmt.Errorf("invalid --step=%d (max %d)", *step, len(r.Steps))

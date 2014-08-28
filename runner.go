@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/jehiah/gomrjob/hdfs"
 )
 
 var (
@@ -31,6 +33,7 @@ type Runner struct {
 	exePath            string
 	MapReduceOptions   []string
 	CompressOutput     bool
+	Files              []string
 }
 
 func NewRunner() *Runner {
@@ -52,7 +55,7 @@ func (r *Runner) setTempPath() {
 }
 
 func (r *Runner) Cleanup() error {
-	return RMR(r.tmpPath)
+	return hdfs.RMR(r.tmpPath)
 }
 
 func (r *Runner) submitJob(loggerAddress string, stepNumber int, step Step) error {
@@ -109,7 +112,7 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int, step Step) erro
 		reducerTasks = step.NumberReducerTasks()
 	}
 
-	j := Job{
+	j := hdfs.Job{
 		Name:         name,
 		CacheFiles:   []string{fmt.Sprintf("hdfs://%s#%s", r.exePath, processName)},
 		ReducerTasks: reducerTasks,
@@ -118,11 +121,12 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int, step Step) erro
 		Mapper:       fmt.Sprintf("%s --stage=mapper", taskString),
 		Reducer:      fmt.Sprintf("%s --stage=reducer", taskString),
 		Options:      jobOptions,
+		Files:        r.Files,
 	}
 	if _, ok := step.(Combiner); ok {
 		j.Combiner = fmt.Sprintf("%s --stage=combiner", taskString)
 	}
-	return SubmitJob(j)
+	return hdfs.SubmitJob(j)
 }
 
 func (r *Runner) copyRunningBinaryToHdfs() error {
@@ -132,7 +136,7 @@ func (r *Runner) copyRunningBinaryToHdfs() error {
 	if err != nil {
 		return fmt.Errorf("failed locating running executable %s", err)
 	}
-	if err := Put(localExePath, r.exePath); err != nil {
+	if err := hdfs.Put(localExePath, r.exePath); err != nil {
 		return fmt.Errorf("error copying %s to hdfs %s", r.exePath, err)
 	}
 	return nil
@@ -209,7 +213,7 @@ func (r *Runner) Run() error {
 	log.Printf("submitting map reduce job")
 
 	r.setTempPath()
-	if err := Mkdir(r.tmpPath); err != nil {
+	if err := hdfs.Mkdir(r.tmpPath); err != nil {
 		return err
 	}
 

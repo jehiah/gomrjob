@@ -4,4 +4,4 @@
 // as a Runner that will submit jobs and put the steps together.
 package gomrjob
 
-const VERSION = "0.1.1"
+const VERSION = "0.2-alpha"

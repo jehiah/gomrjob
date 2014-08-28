@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/jehiah/gomrjob"
 	"io"
 	"log"
 	"os"
+
+	"github.com/jehiah/gomrjob"
+	"github.com/jehiah/gomrjob/hdfs"
 )
 
 var (
@@ -99,7 +101,7 @@ func main() {
 		gomrjob.Status(fmt.Sprintf("Run error %s", err))
 		log.Fatalf("Run error %s", err)
 	}
-	cmd := gomrjob.Cat(fmt.Sprintf("%s/part-*", runner.Output))
+	cmd := hdfs.Cat(fmt.Sprintf("%s/part-*", runner.Output))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Run() // err?

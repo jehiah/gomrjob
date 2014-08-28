@@ -2,11 +2,12 @@ package main
 
 import (
 	"bytes"
-	"github.com/jehiah/gomrjob"
 	"io/ioutil"
 	"log"
 	"os"
 	"testing"
+
+	"github.com/jehiah/gomrjob"
 )
 
 // ensure that we can push a message through a topic and get it out of a channel

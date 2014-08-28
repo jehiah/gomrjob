@@ -1,4 +1,4 @@
-package gomrjob
+package hdfs
 
 import (
 	"bytes"

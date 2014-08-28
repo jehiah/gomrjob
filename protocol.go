@@ -5,10 +5,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/bitly/go-simplejson"
 	"io"
 	"log"
 	"sync"
+
+	"github.com/bitly/go-simplejson"
 )
 
 // returns a channel of simplejson.Json objects. This channel will be closed
@@ -16,17 +17,11 @@ import (
 func JsonInputProtocol(input io.Reader) <-chan *simplejson.Json {
 	out := make(chan *simplejson.Json, 100)
 	go func() {
-		var line []byte
-		var lineErr error
-		r := bufio.NewReaderSize(input, 1024*1024*2)
-		for {
-			if lineErr == io.EOF {
-				break
-			}
-			line, lineErr = r.ReadBytes('\n')
-			if len(line) <= 1 {
-				continue
-			}
+		scanner := bufio.NewScanner(input)
+		for scanner.Scan() {
+			b := scanner.Bytes()
+			line := make([]byte, len(b))
+			copy(line, b)
 			data, err := simplejson.NewJson(line)
 			if err != nil {
 				Counter("JsonInputProtocol", "invalid line", 1)
@@ -34,6 +29,9 @@ func JsonInputProtocol(input io.Reader) <-chan *simplejson.Json {
 			} else {
 				out <- data
 			}
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("failed parsing %s", err)
 		}
 		close(out)
 	}()
@@ -45,21 +43,15 @@ func JsonInputProtocol(input io.Reader) <-chan *simplejson.Json {
 func RawInputProtocol(input io.Reader) <-chan []byte {
 	out := make(chan []byte, 100)
 	go func() {
-		var line []byte
-		var lineErr error
-		r := bufio.NewReaderSize(input, 1024*1024*2)
-		for {
-			if lineErr == io.EOF {
-				break
-			}
-			line, lineErr = r.ReadBytes('\n')
-			if len(line) <= 1 {
-				continue
-			} else if lineErr != nil {
-				log.Printf("%s - failed parsing %s", lineErr, line)
-				continue
-			}
-			out <- line
+		scanner := bufio.NewScanner(input)
+		for scanner.Scan() {
+			b := scanner.Bytes()
+			bb := make([]byte, len(b))
+			copy(bb, b)
+			out <- bb
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("failed parsing %s", err)
 		}
 		close(out)
 	}()
@@ -77,18 +69,13 @@ func JsonInternalInputProtocol(input io.Reader) <-chan JsonKeyChan {
 	out := make(chan JsonKeyChan)
 	var jsonChan chan *simplejson.Json
 	go func() {
-		var line []byte
-		var lineErr error
-		r := bufio.NewReaderSize(input, 1024*1024*2)
+		scanner := bufio.NewScanner(input)
+
 		var lastKey []byte
-		for {
-			if lineErr == io.EOF {
-				break
-			}
-			line, lineErr = r.ReadBytes('\n')
-			if len(line) <= 1 {
-				continue
-			}
+		for scanner.Scan() {
+			b := scanner.Bytes()
+			line := make([]byte, len(b))
+			copy(line, b)
 			chunks := bytes.SplitN(line, []byte("\t"), 2)
 			if len(chunks) != 2 {
 				Counter("JsonInternalInputProtocol", "invalid line - no tab", 1)
@@ -120,6 +107,9 @@ func JsonInternalInputProtocol(input io.Reader) <-chan JsonKeyChan {
 				jsonChan <- data
 			}
 		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("failed parsing %s", err)
+		}
 		if jsonChan != nil {
 			close(jsonChan)
 		}
@@ -139,18 +129,12 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 	out := make(chan RawJsonKeyChan)
 	var jsonChan chan *simplejson.Json
 	go func() {
-		var line []byte
-		var lineErr error
-		r := bufio.NewReaderSize(input, 1024*1024*2)
+		scanner := bufio.NewScanner(input)
 		var lastKey []byte
-		for {
-			if lineErr == io.EOF {
-				break
-			}
-			line, lineErr = r.ReadBytes('\n')
-			if len(line) <= 1 {
-				continue
-			}
+		for scanner.Scan() {
+			b := scanner.Bytes()
+			line := make([]byte, len(b))
+			copy(line, b)
 			chunks := bytes.SplitN(line, []byte("\t"), 2)
 			if len(chunks) != 2 {
 				Counter("RawJsonInternalInputProtocol", "invalid line - no tab", 1)
@@ -175,6 +159,9 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 				jsonChan <- data
 			}
 		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("failed parsing %s", err)
+		}
 		if jsonChan != nil {
 			close(jsonChan)
 		}
@@ -187,15 +174,12 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 func RawInternalInputProtocol(input io.Reader) <-chan KeyValue {
 	out := make(chan KeyValue, 100)
 	go func() {
-		var line []byte
-		var lineErr error
-		r := bufio.NewReaderSize(input, 1024*1024*2)
+		scanner := bufio.NewScanner(input)
 		var lastKey []byte
-		for {
-			if lineErr == io.EOF {
-				break
-			}
-			line, lineErr = r.ReadBytes('\n')
+		for scanner.Scan() {
+			b := scanner.Bytes()
+			line := make([]byte, len(b))
+			copy(line, b)
 			if len(line) <= 1 {
 				continue
 			}
@@ -207,6 +191,9 @@ func RawInternalInputProtocol(input io.Reader) <-chan KeyValue {
 				continue
 			}
 			out <- KeyValue{chunks[0], chunks[1]}
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("failed parsing %s", err)
 		}
 		close(out)
 	}()

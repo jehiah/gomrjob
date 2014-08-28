@@ -138,7 +138,6 @@ func (r *Runner) copyRunningBinaryToHdfs() error {
 	return nil
 }
 
-
 // return which stage the runner is executing as
 func (r *Runner) Stage() string {
 	switch *stage {

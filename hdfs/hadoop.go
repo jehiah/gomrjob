@@ -1,4 +1,4 @@
-package gomrjob
+package hdfs
 
 import (
 	"bufio"
@@ -226,6 +226,7 @@ type Job struct {
 	Options      []string
 	ReducerTasks int
 	CacheFiles   []string
+	Files        []string
 }
 
 func SubmitJob(j Job) error {
@@ -254,6 +255,9 @@ func SubmitJob(j Job) error {
 	for _, f := range j.CacheFiles {
 		args = append(args, "-cacheFile", hdfsFile{f}.String())
 		// -file? --files?
+	}
+	for _, f := range j.Files {
+		args = append(args, "-file", f)
 	}
 	args = append(args, "-output", hdfsFile{j.Output}.String())
 	args = append(args, "-mapper", j.Mapper)

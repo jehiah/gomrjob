@@ -1,8 +1,9 @@
 package gomrjob
 
 import (
-	"github.com/bmizerany/assert"
 	"testing"
+
+	"github.com/bmizerany/assert"
 )
 
 func TestListen(t *testing.T) {

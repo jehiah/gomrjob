@@ -9,6 +9,7 @@ import (
 
 	"github.com/jehiah/gomrjob"
 	"github.com/jehiah/gomrjob/hdfs"
+	"github.com/jehiah/lru"
 )
 
 var (
@@ -23,15 +24,23 @@ type JsonEntryCounter struct {
 func (s *JsonEntryCounter) Mapper(r io.Reader, w io.Writer) error {
 	log.Printf("map_input_file %s", os.Getenv("map_input_file"))
 	wg, out := gomrjob.JsonInternalOutputProtocol(w)
+
+	// for efficient counting, use an in-memory counter that flushes the least recently used item
+	// less Mapper output makes for faster sorting and reducing.
+	counter := lru.NewLRUCounter(func(k interface{}, v int64) {
+		out <- gomrjob.KeyValue{k, v}
+	}, 1000)
+
 	for data := range gomrjob.JsonInputProtocol(r) {
 		gomrjob.Counter("example_mr", "Map Lines Read", 1)
 		key, err := data.Get(s.KeyField).String()
 		if err != nil {
 			gomrjob.Counter("example_mr", "Missing Key", 1)
 		} else {
-			out <- gomrjob.KeyValue{key, 1}
+			counter.Incr(key, 1)
 		}
 	}
+	counter.Flush()
 	close(out)
 	wg.Wait()
 	return nil

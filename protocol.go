@@ -5,10 +5,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/bitly/go-simplejson"
 	"io"
 	"log"
 	"sync"
+
+	"github.com/bitly/go-simplejson"
 )
 
 // returns a channel of simplejson.Json objects. This channel will be closed

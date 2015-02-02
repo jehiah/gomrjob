@@ -2,8 +2,9 @@ package gomrjob
 
 import (
 	"bytes"
-	"github.com/bmizerany/assert"
 	"testing"
+
+	"github.com/bmizerany/assert"
 )
 
 func TestJsonInputProtocol(t *testing.T) {

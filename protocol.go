@@ -299,3 +299,51 @@ func RawJsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- Ke
 	}()
 	return &wg, in
 }
+
+type RawKeyChan struct {
+	Key    []byte
+	Values <-chan []byte
+}
+
+// a raw Key and a channel of Raw Values
+func RawInternalChanInputProtocol(input io.Reader) <-chan RawKeyChan {
+	out := make(chan RawKeyChan)
+	var innerChan chan []byte
+	go func() {
+		var line []byte
+		var lineErr error
+		r := bufio.NewReaderSize(input, 1024*1024*2)
+		var lastKey []byte
+		for {
+			if lineErr == io.EOF {
+				break
+			}
+			line, lineErr = r.ReadBytes('\n')
+			if len(line) <= 1 {
+				continue
+			}
+			chunks := bytes.SplitN(line, []byte("\t"), 2)
+			if len(chunks) != 2 {
+				Counter("RawInternalChanInputProtocol", "invalid line - no tab", 1)
+				log.Printf("invalid line. no tab - %s", line)
+				lastKey = lastKey[:0]
+				continue
+			}
+			if !bytes.Equal(chunks[0], lastKey) {
+				if innerChan != nil {
+					close(innerChan)
+					innerChan = nil
+				}
+				lastKey = chunks[0]
+				innerChan = make(chan []byte, 100)
+				out <- RawKeyChan{lastKey, innerChan}
+			}
+			innerChan <- chunks[1]
+		}
+		if innerChan != nil {
+			close(innerChan)
+		}
+		close(out)
+	}()
+	return out
+}

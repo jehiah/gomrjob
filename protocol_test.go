@@ -2,6 +2,7 @@ package gomrjob
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"github.com/bmizerany/assert"
@@ -38,4 +39,38 @@ func TestJsonInternalOutputProtocol(t *testing.T) {
 ["b","c"]	1
 `)
 
+}
+
+func TestRawInternalChanInputProtocol(t *testing.T) {
+	type testCase struct {
+		data   string
+		keys   int
+		values int
+	}
+
+	tests := []testCase{
+		{"\tkey\n\tkey\n", 1, 2},
+		{"a\tkey\na\tkey\n", 1, 2},
+		{"a\tkey\nb\tkey\nc\tkey\n", 3, 3},
+	}
+
+	consume := func(r io.Reader) (keys int, values int) {
+		for kv := range RawInternalChanInputProtocol(r) {
+			keys++
+			for _ = range kv.Values {
+				values++
+			}
+		}
+		return
+	}
+
+	for i, tc := range tests {
+		keys, values := consume(bytes.NewBufferString(tc.data))
+		if keys != tc.keys {
+			t.Errorf("test[%d] got %d expected %d keys", i, keys, tc.keys)
+		}
+		if values != tc.values {
+			t.Errorf("test[%d] got %d expected %d values", i, values, tc.values)
+		}
+	}
 }

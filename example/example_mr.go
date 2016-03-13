@@ -29,7 +29,7 @@ func (s *JsonEntryCounter) Mapper(r io.Reader, w io.Writer) error {
 	// less Mapper output makes for faster sorting and reducing.
 	counter := lru.NewLRUCounter(func(k interface{}, v int64) {
 		out <- gomrjob.KeyValue{k, v}
-	}, 1000)
+	}, 1)
 
 	for data := range gomrjob.JsonInputProtocol(r) {
 		gomrjob.Counter("example_mr", "Map Lines Read", 1)

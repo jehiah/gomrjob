@@ -127,8 +127,8 @@ func TestMapReduceSteps(t *testing.T, ss []Step, in io.Reader, out io.Reader) []
 	outBytes = bytes.TrimSpace(outBytes)
 	if !bytes.Equal(result, outBytes) {
 		// TODO: iterate line by line for better feedback on errors
-		log.Printf("got output:\n%s", result)
-		log.Printf("expected output:\n%s", outBytes)
+		t.Logf("got output:\n%s", result)
+		t.Logf("expected output:\n%s", outBytes)
 		t.Errorf("output does not match expected output")
 	}
 	return result
@@ -145,8 +145,8 @@ func TestMapReduceStep(t *testing.T, s Step, in io.Reader, out io.Reader) []byte
 	result := runReduceStep(t, s, in)
 	if !bytes.Equal(result, outBytes) {
 		// TODO: iterate line by line for better feedback on errors
-		log.Printf("got output:\n%s", result)
-		log.Printf("expected output:\n%s", outBytes)
+		t.Logf("got output:\n%s", result)
+		t.Logf("expected output:\n%s", outBytes)
 		t.Errorf("output does not match expected output")
 	}
 	return result

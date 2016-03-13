@@ -159,7 +159,7 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 				lastKey = lastKey[:0]
 				continue
 			}
-			if !bytes.Equal(chunks[0], lastKey) {
+			if !bytes.Equal(chunks[0], lastKey) || jsonChan == nil {
 				if jsonChan != nil {
 					close(jsonChan)
 					jsonChan = nil
@@ -329,7 +329,7 @@ func RawInternalChanInputProtocol(input io.Reader) <-chan RawKeyChan {
 				lastKey = lastKey[:0]
 				continue
 			}
-			if !bytes.Equal(chunks[0], lastKey) {
+			if !bytes.Equal(chunks[0], lastKey) || innerChan == nil {
 				if innerChan != nil {
 					close(innerChan)
 					innerChan = nil

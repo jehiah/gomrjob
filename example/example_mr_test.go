@@ -16,8 +16,8 @@ func TestPutMessage(t *testing.T) {
 	log.SetOutput(os.Stdout)
 
 	step := &JsonEntryCounter{"key_field"}
-	in := `{"key_field":"a"}
-			{"key_field":"z"}
+	in := `{"key_field":"z"}
+			{"key_field":"a"}
 			{"key_field":"another"}
 			{"key_field":"z"}
 			{"key_field":"z"}

@@ -53,11 +53,12 @@ func RawInputProtocol(input io.Reader) <-chan []byte {
 			if lineErr == io.EOF {
 				break
 			}
+			if lineErr != nil {
+				log.Printf("%s - failed parsing %q", lineErr, line)
+				break
+			}
 			line, lineErr = r.ReadBytes('\n')
-			if len(line) <= 1 {
-				continue
-			} else if lineErr != nil {
-				log.Printf("%s - failed parsing %s", lineErr, line)
+			if len(line) < 1 || lineErr != nil {
 				continue
 			}
 			out <- line

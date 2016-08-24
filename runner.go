@@ -23,8 +23,9 @@ var (
 )
 
 type Runner struct {
-	Name               string
-	Steps              []Step
+	Name  string
+	Steps []Step
+	// Inputfiles can be of the format `/pattern/to/files*.gz` or `hdfs:///pattern/to/files*.gz` or `s3://bucket/pattern`
 	InputFiles         []string
 	Output             string
 	ReducerTasks       int

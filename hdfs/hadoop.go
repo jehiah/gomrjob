@@ -205,15 +205,17 @@ type HdfsFile struct {
 	Path         string
 }
 
-type hdfsFile struct {
-	path string
-}
+type hdfsFile string
 
 func (f hdfsFile) String() string {
-	if strings.HasPrefix(f.path, "hdfs://") {
-		return f.path
+	switch {
+	case strings.HasPrefix(string(f), "hdfs://"):
+		return string(f)
+	case strings.HasPrefix(string(f), "s3://"):
+		return string(f)
+	default:
+		return fmt.Sprintf("hdfs://%s", string(f))
 	}
-	return fmt.Sprintf("hdfs://%s", f.path)
 }
 
 type Job struct {
@@ -250,16 +252,16 @@ func SubmitJob(j Job) error {
 	// -cmdenv name=value	// Pass env var to streaming commands
 
 	for _, f := range j.Input {
-		args = append(args, "-input", hdfsFile{f}.String())
+		args = append(args, "-input", hdfsFile(f).String())
 	}
 	for _, f := range j.CacheFiles {
-		args = append(args, "-cacheFile", hdfsFile{f}.String())
+		args = append(args, "-cacheFile", hdfsFile(f).String())
 		// -file? --files?
 	}
 	for _, f := range j.Files {
 		args = append(args, "-file", f)
 	}
-	args = append(args, "-output", hdfsFile{j.Output}.String())
+	args = append(args, "-output", hdfsFile(j.Output).String())
 	args = append(args, "-mapper", j.Mapper)
 	if j.Combiner != "" {
 		args = append(args, "-combiner", j.Combiner)

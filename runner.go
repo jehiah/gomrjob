@@ -214,7 +214,7 @@ func (r *Runner) Run() error {
 	log.Printf("submitting map reduce job")
 
 	r.setTempPath()
-	if err := hdfs.Mkdir(r.tmpPath); err != nil {
+	if err := hdfs.FsCmd("-mkdir", "-p", r.tmpPath); err != nil {
 		return err
 	}
 

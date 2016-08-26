@@ -52,7 +52,9 @@ func (r *Runner) setTempPath() {
 		username = user.Username
 	}
 	now := time.Now().Format("20060102-150405")
-	r.tmpPath = fmt.Sprintf("/user/%s/tmp/%s.%s", username, r.Name, now)
+	if r.tmpPath == "" {
+		r.tmpPath = fmt.Sprintf("/user/%s/tmp/%s.%s", username, r.Name, now)
+	}
 }
 
 func (r *Runner) Cleanup() error {

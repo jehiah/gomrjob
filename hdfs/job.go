@@ -37,20 +37,23 @@ func SubmitJob(j Job) error {
 	args := []string{"jar", jar}
 	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", j.Name))
 	args = append(args, "-D", fmt.Sprintf("mapred.reduce.tasks=%d", j.ReducerTasks))
-	if len(j.Options) > 0 {
-		args = append(args, j.Options...)
-	}
+
 	// -cmdenv name=value	// Pass env var to streaming commands
 
-	for _, f := range j.Input {
-		args = append(args, "-input", hdfsFile(f).String())
-	}
+	// -files is a generic option; must come before streaming options
 	if len(j.CacheFiles) > 0 {
 		var s []string
 		for _, f := range j.CacheFiles {
 			s = append(s, hdfsFile(f).String())
 		}
 		args = append(args, "-files", strings.Join(s, ","))
+	}
+	if len(j.Options) > 0 {
+		args = append(args, j.Options...)
+	}
+
+	for _, f := range j.Input {
+		args = append(args, "-input", hdfsFile(f).String())
 	}
 	for _, f := range j.Files {
 		args = append(args, "-file", f)

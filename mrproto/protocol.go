@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"sync"
@@ -219,21 +218,6 @@ func RawInternalInputProtocol(input io.Reader) <-chan KeyValue {
 type KeyValue struct {
 	Key   interface{}
 	Value interface{}
-}
-
-func RawKeyValueOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyValue) {
-	w := bufio.NewWriter(writer)
-	in := make(chan KeyValue, 100)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		for kv := range in {
-			fmt.Fprintf(w, "%+v\t%+v\n", kv.Key, kv.Value)
-		}
-		w.Flush()
-		wg.Done()
-	}()
-	return &wg, in
 }
 
 // a json Key, and a json value

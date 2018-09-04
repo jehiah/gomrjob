@@ -1,8 +1,7 @@
 language: go
 go:
-  - 1.4
-  - 1.5
-  - 1.6
+  - 1.10.x
+  - 1.11.x
 install:
   - go get github.com/bmizerany/assert
   - go get github.com/bitly/go-simplejson

@@ -1,15 +1,15 @@
-package gomrjob
+package mrproto
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"sync"
 
 	"github.com/bitly/go-simplejson"
+	"github.com/jehiah/gomrjob"
 )
 
 // returns a channel of simplejson.Json objects. This channel will be closed
@@ -30,7 +30,7 @@ func JsonInputProtocol(input io.Reader) <-chan *simplejson.Json {
 			}
 			data, err := simplejson.NewJson(line)
 			if err != nil {
-				Counter("JsonInputProtocol", "invalid line", 1)
+				gomrjob.Counter("JsonInputProtocol", "invalid line", 1)
 				log.Printf("%s - failed parsing %s", err, line)
 			} else {
 				out <- data
@@ -93,7 +93,7 @@ func JsonInternalInputProtocol(input io.Reader) <-chan JsonKeyChan {
 			}
 			chunks := bytes.SplitN(line, []byte("\t"), 2)
 			if len(chunks) != 2 {
-				Counter("JsonInternalInputProtocol", "invalid line - no tab", 1)
+				gomrjob.Counter("JsonInternalInputProtocol", "invalid line - no tab", 1)
 				log.Printf("invalid line. no tab - %s", line)
 				lastKey = lastKey[:0]
 				continue
@@ -105,7 +105,7 @@ func JsonInternalInputProtocol(input io.Reader) <-chan JsonKeyChan {
 				}
 				key, err := simplejson.NewJson(chunks[0])
 				if err != nil {
-					Counter("JsonInternalInputProtocol", "invalid line", 1)
+					gomrjob.Counter("JsonInternalInputProtocol", "invalid line", 1)
 					log.Printf("%s - failed parsing key %s", err, line)
 					continue
 				}
@@ -116,7 +116,7 @@ func JsonInternalInputProtocol(input io.Reader) <-chan JsonKeyChan {
 			}
 			data, err := simplejson.NewJson(chunks[1])
 			if err != nil {
-				Counter("JsonInternalInputProtocol", "invalid line", 1)
+				gomrjob.Counter("JsonInternalInputProtocol", "invalid line", 1)
 				log.Printf("%s - failed parsing %s", err, line)
 			} else {
 				jsonChan <- data
@@ -155,7 +155,7 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 			}
 			chunks := bytes.SplitN(line, []byte("\t"), 2)
 			if len(chunks) != 2 {
-				Counter("RawJsonInternalInputProtocol", "invalid line - no tab", 1)
+				gomrjob.Counter("RawJsonInternalInputProtocol", "invalid line - no tab", 1)
 				log.Printf("invalid line. no tab - %s", line)
 				lastKey = lastKey[:0]
 				continue
@@ -171,7 +171,7 @@ func RawJsonInternalInputProtocol(input io.Reader) <-chan RawJsonKeyChan {
 			}
 			data, err := simplejson.NewJson(chunks[1])
 			if err != nil {
-				Counter("RawJsonInternalInputProtocol", "invalid line", 1)
+				gomrjob.Counter("RawJsonInternalInputProtocol", "invalid line", 1)
 				log.Printf("%s - failed parsing %s", err, line)
 			} else {
 				jsonChan <- data
@@ -203,7 +203,7 @@ func RawInternalInputProtocol(input io.Reader) <-chan KeyValue {
 			}
 			chunks := bytes.SplitN(line, []byte("\t"), 2)
 			if len(chunks) != 2 {
-				Counter("RawInternalInputProtocol", "invalid line - no tab", 1)
+				gomrjob.Counter("RawInternalInputProtocol", "invalid line - no tab", 1)
 				log.Printf("invalid line. no tab - %s", line)
 				lastKey = lastKey[:0]
 				continue
@@ -220,21 +220,6 @@ type KeyValue struct {
 	Value interface{}
 }
 
-func RawKeyValueOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyValue) {
-	w := bufio.NewWriter(writer)
-	in := make(chan KeyValue, 100)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		for kv := range in {
-			fmt.Fprintf(w, "%+v\t%+v\n", kv.Key, kv.Value)
-		}
-		w.Flush()
-		wg.Done()
-	}()
-	return &wg, in
-}
-
 // a json Key, and a json value
 func JsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyValue) {
 	w := bufio.NewWriter(writer)
@@ -247,13 +232,13 @@ func JsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyVa
 		for kv := range in {
 			kBytes, err := json.Marshal(kv.Key)
 			if err != nil {
-				Counter("JsonInternalOutputProtocol", "unable to json encode key", 1)
+				gomrjob.Counter("JsonInternalOutputProtocol", "unable to json encode key", 1)
 				log.Printf("%s - failed encoding %v", err, kv.Key)
 				continue
 			}
 			vBytes, err := json.Marshal(kv.Value)
 			if err != nil {
-				Counter("JsonInternalOutputProtocol", "unable to json encode value", 1)
+				gomrjob.Counter("JsonInternalOutputProtocol", "unable to json encode value", 1)
 				log.Printf("%s - failed encoding %v", err, kv.Value)
 				continue
 			}
@@ -280,13 +265,13 @@ func RawJsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- Ke
 		for kv := range in {
 			kBytes, ok := kv.Key.([]byte)
 			if !ok {
-				Counter("RawJsonInternalOutputProtocol", "key is not []byte", 1)
+				gomrjob.Counter("RawJsonInternalOutputProtocol", "key is not []byte", 1)
 				log.Printf("failed type casting %v", kv.Key)
 				continue
 			}
 			vBytes, err := json.Marshal(kv.Value)
 			if err != nil {
-				Counter("RawJsonInternalOutputProtocol", "unable to json encode value", 1)
+				gomrjob.Counter("RawJsonInternalOutputProtocol", "unable to json encode value", 1)
 				log.Printf("%s - failed encoding %v", err, kv.Value)
 				continue
 			}
@@ -325,7 +310,7 @@ func RawInternalChanInputProtocol(input io.Reader) <-chan RawKeyChan {
 			}
 			chunks := bytes.SplitN(line, []byte("\t"), 2)
 			if len(chunks) != 2 {
-				Counter("RawInternalChanInputProtocol", "invalid line - no tab", 1)
+				gomrjob.Counter("RawInternalChanInputProtocol", "invalid line - no tab", 1)
 				log.Printf("invalid line. no tab - %s", line)
 				lastKey = lastKey[:0]
 				continue
@@ -347,4 +332,25 @@ func RawInternalChanInputProtocol(input io.Reader) <-chan RawKeyChan {
 		close(out)
 	}()
 	return out
+}
+
+// Sum expects output from a JsonInternalOutputProtocol
+// and outputs a matching key, sum(values) dataset
+func Sum(r io.Reader, w io.Writer) error {
+	wg, out := RawJsonInternalOutputProtocol(w)
+	for kv := range RawJsonInternalInputProtocol(r) {
+		var i int64
+		for v := range kv.Values {
+			vv, err := v.Int64()
+			if err != nil {
+				log.Printf("non-int value %s", err)
+			} else {
+				i += vv
+			}
+		}
+		out <- KeyValue{kv.Key, i}
+	}
+	close(out)
+	wg.Wait()
+	return nil
 }

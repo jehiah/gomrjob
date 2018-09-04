@@ -1,4 +1,4 @@
-package gomrjob
+package mrproto
 
 import (
 	"bytes"

@@ -165,7 +165,7 @@ func (r *Runner) Run() error {
 			if *stage == "" {
 				Status(fmt.Sprintf("error dialing remote logger %s", err))
 			} else {
-				log.Printf("failed connecting to remote logger", err)
+				log.Printf("failed connecting to remote logger %s", err)
 			}
 		} else {
 			hostname, _ := os.Hostname()
@@ -211,7 +211,7 @@ func (r *Runner) Run() error {
 		return errors.New("missing --submit-job")
 	}
 
-	log.Printf("submitting map reduce job")
+	log.Print("submitting map reduce job")
 
 	r.setTempPath()
 	if err := hdfs.FsCmd("-mkdir", "-p", r.tmpPath); err != nil {

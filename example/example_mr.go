@@ -9,6 +9,7 @@ import (
 
 	"github.com/jehiah/gomrjob"
 	"github.com/jehiah/gomrjob/hdfs"
+	"github.com/jehiah/gomrjob/mrproto"
 	"github.com/jehiah/lru"
 )
 
@@ -23,15 +24,15 @@ type JsonEntryCounter struct {
 // An example Map function. It consumes json data and yields a value for each line
 func (s *JsonEntryCounter) Mapper(r io.Reader, w io.Writer) error {
 	log.Printf("map_input_file %s", os.Getenv("map_input_file"))
-	wg, out := gomrjob.JsonInternalOutputProtocol(w)
+	wg, out := mrproto.JsonInternalOutputProtocol(w)
 
 	// for efficient counting, use an in-memory counter that flushes the least recently used item
 	// less Mapper output makes for faster sorting and reducing.
 	counter := lru.NewLRUCounter(func(k interface{}, v int64) {
-		out <- gomrjob.KeyValue{k, v}
+		out <- mrproto.KeyValue{k, v}
 	}, 1)
 
-	for data := range gomrjob.JsonInputProtocol(r) {
+	for data := range mrproto.JsonInputProtocol(r) {
 		gomrjob.Counter("example_mr", "Map Lines Read", 1)
 		key, err := data.Get(s.KeyField).String()
 		if err != nil {
@@ -53,8 +54,8 @@ func (s *JsonEntryCounter) Combiner(r io.Reader, w io.Writer) error {
 
 // // A simple reduce function that counts keys
 // func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
-// 	wg, out := gomrjob.JsonInternalOutputProtocol(w)
-// 	for kv := range gomrjob.JsonInternalInputProtocol(r) {
+// 	wg, out := mrproto.JsonInternalOutputProtocol(w)
+// 	for kv := range mrproto.JsonInternalInputProtocol(r) {
 // 		var i int64
 // 		for v := range kv.Values {
 // 			vv, err := v.Int64()
@@ -70,7 +71,7 @@ func (s *JsonEntryCounter) Combiner(r io.Reader, w io.Writer) error {
 // 			gomrjob.Counter("example_mr", "non-string key", 1)
 // 			log.Printf("non-string key %s", err)
 // 		}
-// 		out <- gomrjob.KeyValue{keyString, i}
+// 		out <- mrproto.KeyValue{keyString, i}
 // 	}
 // 	close(out)
 // 	wg.Wait()
@@ -78,8 +79,8 @@ func (s *JsonEntryCounter) Combiner(r io.Reader, w io.Writer) error {
 // }
 
 func (s *JsonEntryCounter) Reducer(r io.Reader, w io.Writer) error {
-	wg, out := gomrjob.RawJsonInternalOutputProtocol(w)
-	for kv := range gomrjob.RawJsonInternalInputProtocol(r) {
+	wg, out := mrproto.RawJsonInternalOutputProtocol(w)
+	for kv := range mrproto.RawJsonInternalInputProtocol(r) {
 		var i int64
 		for v := range kv.Values {
 			vv, err := v.Int64()
@@ -90,7 +91,7 @@ func (s *JsonEntryCounter) Reducer(r io.Reader, w io.Writer) error {
 				i += vv
 			}
 		}
-		out <- gomrjob.KeyValue{kv.Key, i}
+		out <- mrproto.KeyValue{kv.Key, i}
 	}
 	close(out)
 	wg.Wait()

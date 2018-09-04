@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jehiah/gomrjob"
+	"github.com/jehiah/gomrjob/mrtest"
 )
 
 // ensure that we can push a message through a topic and get it out of a channel
@@ -26,5 +26,5 @@ func TestPutMessage(t *testing.T) {
 "another"	1
 "z"	3
 `
-	gomrjob.TestMapReduceStep(t, step, bytes.NewBufferString(in), bytes.NewBufferString(out))
+	mrtest.TestMapReduceStep(t, step, bytes.NewBufferString(in), bytes.NewBufferString(out))
 }

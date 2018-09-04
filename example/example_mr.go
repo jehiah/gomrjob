@@ -79,22 +79,7 @@ func (s *JsonEntryCounter) Combiner(r io.Reader, w io.Writer) error {
 // }
 
 func (s *JsonEntryCounter) Reducer(r io.Reader, w io.Writer) error {
-	wg, out := mrproto.RawJsonInternalOutputProtocol(w)
-	for kv := range mrproto.RawJsonInternalInputProtocol(r) {
-		var i int64
-		for v := range kv.Values {
-			vv, err := v.Int64()
-			if err != nil {
-				gomrjob.Counter("example_mr", "non-int value", 1)
-				log.Printf("non-int value %s", err)
-			} else {
-				i += vv
-			}
-		}
-		out <- mrproto.KeyValue{kv.Key, i}
-	}
-	close(out)
-	wg.Wait()
+	return mrproto.Sum(r, w)
 	return nil
 }
 

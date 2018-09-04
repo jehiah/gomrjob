@@ -349,3 +349,24 @@ func RawInternalChanInputProtocol(input io.Reader) <-chan RawKeyChan {
 	}()
 	return out
 }
+
+// Sum expects output from a JsonInternalOutputProtocol
+// and outputs a matching key, sum(values) dataset
+func Sum(r io.Reader, w io.Writer) error {
+	wg, out := RawJsonInternalOutputProtocol(w)
+	for kv := range RawJsonInternalInputProtocol(r) {
+		var i int64
+		for v := range kv.Values {
+			vv, err := v.Int64()
+			if err != nil {
+				log.Printf("non-int value %s", err)
+			} else {
+				i += vv
+			}
+		}
+		out <- KeyValue{kv.Key, i}
+	}
+	close(out)
+	wg.Wait()
+	return nil
+}

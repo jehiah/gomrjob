@@ -29,17 +29,18 @@ type Runner struct {
 	InputFiles         []string
 	Output             string
 	ReducerTasks       int
-	PassThroughOptions []string
+	PassThroughOptions []string // CLI arguments to $exe when run as map / reduce tasks
 	tmpPath            string
 	exePath            string
-	MapReduceOptions   []string
 	CompressOutput     bool
 	Files              []string
+	Properties         map[string]string // -D key=value argumets to mapreduce-streaming.jar
 }
 
 func NewRunner() *Runner {
 	r := &Runner{
 		ReducerTasks: 30,
+		Properties: make(map[string]string),
 	}
 	r.setTempPath()
 	return r
@@ -90,16 +91,9 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int, step Step) erro
 	taskOptions = append(taskOptions, fmt.Sprintf("--step=%d", stepNumber))
 	taskString := fmt.Sprintf("%s %s", processName, strings.Join(taskOptions, " "))
 
-	var jobOptions []string
 	if r.CompressOutput {
-		jobOptions = append(jobOptions, "-D", "mapred.output.compress=true")
-		jobOptions = append(jobOptions, "-D", "mapred.output.compression.codec=org.apache.hadoop.io.compress.GzipCodec")
-	}
-
-	// important for this to be the end of the genericOptions, and beginning of the command options
-	// this allows users to specify "-D ....", or "-outputformat"
-	for _, option := range r.MapReduceOptions {
-		jobOptions = append(jobOptions, option)
+		r.Properties["mapred.output.compress"] = "true"
+		r.Properties["mapred.output.compression.codec"] = "org.apache.hadoop.io.compress.GzipCodec"
 	}
 
 	name := r.Name
@@ -121,8 +115,8 @@ func (r *Runner) submitJob(loggerAddress string, stepNumber int, step Step) erro
 		Output:       output,
 		Mapper:       fmt.Sprintf("%s --stage=mapper", taskString),
 		Reducer:      fmt.Sprintf("%s --stage=reducer", taskString),
-		Options:      jobOptions,
 		Files:        r.Files,
+		Properties:   r.Properties,
 	}
 	if _, ok := step.(Combiner); ok {
 		j.Combiner = fmt.Sprintf("%s --stage=combiner", taskString)

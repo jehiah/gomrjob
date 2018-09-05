@@ -217,4 +217,3 @@ func (f hdfsFile) String() string {
 		return fmt.Sprintf("hdfs://%s", string(f))
 	}
 }
-

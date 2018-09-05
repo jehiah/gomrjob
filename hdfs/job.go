@@ -16,10 +16,37 @@ type Job struct {
 	Mapper       string
 	Reducer      string
 	Combiner     string
-	Options      []string
 	ReducerTasks int
-	CacheFiles   []string // -files
-	Files        []string // -file
+	Properties   map[string]string // -D key=value
+	CacheFiles   []string          // -files
+	Files        []string          // -file
+}
+
+func (j Job) JarArgs() (args []string) {
+	for _, f := range j.Input {
+		args = append(args, "-input", hdfsFile(f).String())
+	}
+	args = append(args, "-output", hdfsFile(j.Output).String())
+	args = append(args, "-mapper", j.Mapper)
+	if j.Combiner != "" {
+		args = append(args, "-combiner", j.Combiner)
+	}
+	args = append(args, "-reducer", j.Reducer)
+	return
+}
+
+// PropertyArgs returns the '-D key=value' arguments for hadoop-streaming.jar
+func (j Job) PropertyArgs() (args []string) {
+	if _, ok := j.Properties["mapred.job.name"]; !ok {
+		args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", j.Name))
+	}
+	if _, ok := j.Properties["mapred.reduce.tasks"]; !ok {
+		args = append(args, "-D", fmt.Sprintf("mapred.reduce.tasks=%d", j.ReducerTasks))
+	}
+	for k, v := range j.Properties {
+		args = append(args, "-D", fmt.Sprintf("%s=%s", k, v))
+	}
+	return
 }
 
 func SubmitJob(j Job) error {
@@ -35,8 +62,7 @@ func SubmitJob(j Job) error {
 	}
 
 	args := []string{"jar", jar}
-	args = append(args, "-D", fmt.Sprintf("mapred.job.name=%s", j.Name))
-	args = append(args, "-D", fmt.Sprintf("mapred.reduce.tasks=%d", j.ReducerTasks))
+	args = append(args, j.PropertyArgs()...)
 
 	// -cmdenv name=value	// Pass env var to streaming commands
 
@@ -48,22 +74,11 @@ func SubmitJob(j Job) error {
 		}
 		args = append(args, "-files", strings.Join(s, ","))
 	}
-	if len(j.Options) > 0 {
-		args = append(args, j.Options...)
-	}
 
-	for _, f := range j.Input {
-		args = append(args, "-input", hdfsFile(f).String())
-	}
 	for _, f := range j.Files {
 		args = append(args, "-file", f)
 	}
-	args = append(args, "-output", hdfsFile(j.Output).String())
-	args = append(args, "-mapper", j.Mapper)
-	if j.Combiner != "" {
-		args = append(args, "-combiner", j.Combiner)
-	}
-	args = append(args, "-reducer", j.Reducer)
+	args = append(args, j.JarArgs()...)
 	cmd := exec.Command(hadoopBinPath("hadoop"), args...)
 	log.Print(cmd.Args)
 	cmd.Stdout = os.Stdout

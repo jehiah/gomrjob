@@ -20,13 +20,35 @@ type Job struct {
 	Properties   map[string]string // -D key=value
 	CacheFiles   []string          // -files
 	Files        []string          // -file
+
+	DefaultProto string // protocol for relative files
+}
+
+func absolutePath(path, proto string) string {
+	switch {
+	case strings.HasPrefix(path, "hdfs://"):
+		return path
+	case strings.HasPrefix(path, "s3://"):
+		return path
+	case strings.HasPrefix(path, "gs://"):
+		return path
+	case strings.HasPrefix(path, "file://"):
+		return path
+	}
+	if proto == "" {
+		proto = "hdfs:///"
+	}
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+	return proto + path
 }
 
 func (j Job) JarArgs() (args []string) {
 	for _, f := range j.Input {
-		args = append(args, "-input", hdfsFile(f).String())
+		args = append(args, "-input", absolutePath(f, j.DefaultProto))
 	}
-	args = append(args, "-output", hdfsFile(j.Output).String())
+	args = append(args, "-output", absolutePath(j.Output, j.DefaultProto))
 	args = append(args, "-mapper", j.Mapper)
 	if j.Combiner != "" {
 		args = append(args, "-combiner", j.Combiner)
@@ -70,7 +92,7 @@ func SubmitJob(j Job) error {
 	if len(j.CacheFiles) > 0 {
 		var s []string
 		for _, f := range j.CacheFiles {
-			s = append(s, hdfsFile(f).String())
+			s = append(s, absolutePath(f, j.DefaultProto))
 		}
 		args = append(args, "-files", strings.Join(s, ","))
 	}

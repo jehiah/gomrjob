@@ -3,9 +3,10 @@ go:
   - 1.10.x
   - 1.11.x
 install:
-  - go get github.com/bmizerany/assert
+  - go get github.com/stretchr/testify/assert
   - go get github.com/bitly/go-simplejson
   - go get github.com/jehiah/lru
+  - go get -d golang.org/x/oauth2/google
 notifications:
   email: false
 

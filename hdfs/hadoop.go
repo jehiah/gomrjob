@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -13,7 +12,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -203,17 +201,4 @@ type HdfsFile struct {
 	Size         int64
 	Modified     time.Time
 	Path         string
-}
-
-type hdfsFile string
-
-func (f hdfsFile) String() string {
-	switch {
-	case strings.HasPrefix(string(f), "hdfs://"):
-		return string(f)
-	case strings.HasPrefix(string(f), "s3://"):
-		return string(f)
-	default:
-		return fmt.Sprintf("hdfs://%s", string(f))
-	}
 }

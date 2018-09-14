@@ -15,16 +15,17 @@ func TestPutMessage(t *testing.T) {
 	log.SetOutput(ioutil.Discard)
 	log.SetOutput(os.Stdout)
 
-	step := &JsonEntryCounter{"key_field"}
+	step := &JsonEntryCounter{}
 	in := `{"key_field":"z"}
 			{"key_field":"a"}
 			{"key_field":"another"}
 			{"key_field":"z"}
 			{"key_field":"z"}
-			{"key_field":"a"}`
-	out := `"a"	2
-"another"	1
-"z"	3
+			{"another_key":"a"}
+`
+	out := `"another_key"	1
+"key_field"	5
+"lines_read"	6
 `
 	mrtest.TestMapReduceStep(t, step, bytes.NewBufferString(in), bytes.NewBufferString(out))
 }

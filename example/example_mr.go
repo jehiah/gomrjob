@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -13,12 +14,7 @@ import (
 	"github.com/jehiah/lru"
 )
 
-var (
-	input = flag.String("input", "", "path to hdfs input file")
-)
-
 type JsonEntryCounter struct {
-	KeyField string
 }
 
 // An example Map function. It consumes json data and yields a value for each line
@@ -30,15 +26,19 @@ func (s *JsonEntryCounter) Mapper(r io.Reader, w io.Writer) error {
 	// less Mapper output makes for faster sorting and reducing.
 	counter := lru.NewLRUCounter(func(k interface{}, v int64) {
 		out <- mrproto.KeyValue{k, v}
-	}, 1)
+	}, 100)
 
-	for data := range mrproto.JsonInputProtocol(r) {
+	for line := range mrproto.RawInputProtocol(r) {
+		var record map[string]json.RawMessage
+		if err := json.Unmarshal(line, &record); err != nil {
+			gomrjob.Counter("example_mr", "Unmarshal Error", 1)
+			log.Printf("%s", err)
+			continue
+		}
 		gomrjob.Counter("example_mr", "Map Lines Read", 1)
-		key, err := data.Get(s.KeyField).String()
-		if err != nil {
-			gomrjob.Counter("example_mr", "Missing Key", 1)
-		} else {
-			counter.Incr(key, 1)
+		counter.Incr("lines_read", 1)
+		for k, _ := range record {
+			counter.Incr(k, 1)
 		}
 	}
 	counter.Flush()
@@ -47,59 +47,37 @@ func (s *JsonEntryCounter) Mapper(r io.Reader, w io.Writer) error {
 	return nil
 }
 
-// just re-use the reducer as the combiner
-func (s *JsonEntryCounter) Combiner(r io.Reader, w io.Writer) error {
-	return s.Reducer(r, w)
-}
-
-// // A simple reduce function that counts keys
-// func (s *MRStep) Reducer(r io.Reader, w io.Writer) error {
-// 	wg, out := mrproto.JsonInternalOutputProtocol(w)
-// 	for kv := range mrproto.JsonInternalInputProtocol(r) {
-// 		var i int64
-// 		for v := range kv.Values {
-// 			vv, err := v.Int64()
-// 			if err != nil {
-// 				gomrjob.Counter("example_mr", "non-int value", 1)
-// 				log.Printf("non-int value %s", err)
-// 			} else {
-// 				i += vv
-// 			}
-// 		}
-// 		keyString, err := kv.Key.String()
-// 		if err != nil {
-// 			gomrjob.Counter("example_mr", "non-string key", 1)
-// 			log.Printf("non-string key %s", err)
-// 		}
-// 		out <- mrproto.KeyValue{keyString, i}
-// 	}
-// 	close(out)
-// 	wg.Wait()
-// 	return nil
-// }
-
 func (s *JsonEntryCounter) Reducer(r io.Reader, w io.Writer) error {
 	return mrproto.Sum(r, w)
 	return nil
 }
 
 func main() {
+	input := flag.String("input", "", "path to input file")
+	name := flag.String("name", "gomrjob-example", "job name")
 	flag.Parse()
 
 	runner := gomrjob.NewRunner()
-	runner.Name = "test-gomrjob"
+	runner.Name = *name
 	runner.InputFiles = append(runner.InputFiles, *input)
-	runner.ReducerTasks = 3
-	runner.Steps = append(runner.Steps, &JsonEntryCounter{"api_path"})
+	runner.ReducerTasks = 2
+	runner.Steps = append(runner.Steps, &JsonEntryCounter{})
 	err := runner.Run()
 	if err != nil {
 		gomrjob.Status(fmt.Sprintf("Run error %s", err))
 		log.Fatalf("Run error %s", err)
 	}
-	cmd := hdfs.Cat(fmt.Sprintf("%s/part-*", runner.Output))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run() // err?
-	// runner.Cleanup()
+
+	switch runner.JobType {
+	case gomrjob.HDFS:
+		cmd := hdfs.Cat(fmt.Sprintf("%s/part-*", runner.Output))
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			log.Fatal(err)
+		}
+	case gomrjob.Dataproc:
+		log.Printf("output in %s/part-*", runner.Output)
+	}
 
 }

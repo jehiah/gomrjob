@@ -1,6 +1,7 @@
 # GoMRJob 
 
-[![Build Status](https://secure.travis-ci.org/jehiah/gomrjobsvg?branch=master)][https://travis-ci.org/jehiah/gomrjob] [![GoDoc](https://godoc.org/github.com/jehiah/gomrjob?status.svg)](https://godoc.org/github.com/jehiah/gomrjob)
+[![Build Status](https://secure.travis-ci.org/jehiah/gomrjob.png?branch=master)](http://travis-ci.org/jehiah/gomrjob) [![GoDoc](https://godoc.org/github.com/jehiah/gomrjob?status.svg)](https://godoc.org/github.com/jehiah/gomrjob) [![GitHub release](https://img.shields.io/github/release/jehiah/gomrjob.svg)](https://github.com/jehiah/gomrjob/releases/latest)
+
 
 A Go framework for running Map Reduce Jobs on Hadoop.
 

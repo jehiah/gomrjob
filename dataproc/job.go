@@ -14,6 +14,15 @@ import (
 	"github.com/jehiah/gomrjob/hdfs"
 )
 
+func isErrorState(s string) bool {
+	switch s {
+	case "ATTEMPT_FAILURE", "ERROR", "CANCELLED":
+		return true
+	default:
+		return false
+	}
+}
+
 func isTerminalState(s string) bool {
 	switch s {
 	case "ATTEMPT_FAILURE", "ERROR", "DONE", "CANCELLED":
@@ -97,7 +106,10 @@ func SubmitJob(j hdfs.Job, client *http.Client, project, region, cluster string)
 			log.Printf("job:%s status:%s", job.Reference.JobID, state)
 		}
 		if isTerminalState(state) {
-			break
+			if isErrorState(state) {
+				return fmt.Errorf("job:%s finished with status:%s", job.Reference.JobID, state)
+			}
+			return nil
 		}
 	}
 	return nil

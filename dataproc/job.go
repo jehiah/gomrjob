@@ -115,7 +115,33 @@ func SubmitJob(j hdfs.Job, client *http.Client, project, region, cluster string)
 	return nil
 }
 
+type unavalable503 struct {
+	body string
+}
+
+func (u unavalable503) Error() string {
+	return fmt.Sprintf("503 Unavailable %s", u.body)
+}
+
 func get(client *http.Client, resource string) (*job, error) {
+	var j *job
+	var err error
+	for i := 0; i < 5; i++ {
+		j, err = getJob(client, resource)
+		if err == nil {
+			return j, err
+		}
+		if _, ok := err.(unavalable503); ok {
+			log.Printf("retrying get. err:%s", err)
+			time.Sleep(10 * time.Second)
+		} else {
+			break
+		}
+	}
+	return j, err
+}
+
+func getJob(client *http.Client, resource string) (*job, error) {
 	resp, err := client.Get(resource)
 	if err != nil {
 		return nil, err
@@ -124,6 +150,9 @@ func get(client *http.Client, resource string) (*job, error) {
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode == 503 {
+		return nil, unavalable503{body: string(respBody)}
 	}
 	if resp.StatusCode != 200 {
 		log.Print(string(respBody))

@@ -42,7 +42,7 @@ func startRemoteLogListner() string {
 				continue
 			}
 			log.Printf("accepted remote logging connection from %s", conn.RemoteAddr())
-			go io.Copy(os.Stderr, conn)
+			go io.Copy(os.Stderr, conn) // nolint:errcheck
 		}
 	}()
 

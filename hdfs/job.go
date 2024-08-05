@@ -38,9 +38,7 @@ func absolutePath(path, proto string) string {
 	if proto == "" {
 		proto = "hdfs:///"
 	}
-	if strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
+	path = strings.TrimPrefix(path, "/")
 	return proto + path
 }
 

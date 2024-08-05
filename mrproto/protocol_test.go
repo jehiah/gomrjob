@@ -57,7 +57,7 @@ func TestRawInternalChanInputProtocol(t *testing.T) {
 	consume := func(r io.Reader) (keys int, values int) {
 		for kv := range RawInternalChanInputProtocol(r) {
 			keys++
-			for _ = range kv.Values {
+			for range kv.Values {
 				values++
 			}
 		}

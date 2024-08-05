@@ -1,10 +1,11 @@
 package gcloud
 
 import (
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"io/ioutil"
+	"context"
 	"net/http"
+	"os"
+
+	"golang.org/x/oauth2/google"
 )
 
 const (
@@ -16,7 +17,7 @@ const (
 // This reads a json service account credential file, and returns a http.Client that's bound to an
 // oauth2 access token for the provided scopes
 func LoadFromServiceJSON(serviceAccountPath string, scope ...string) (*http.Client, error) {
-	data, err := ioutil.ReadFile(serviceAccountPath)
+	data, err := os.ReadFile(serviceAccountPath)
 	if err != nil {
 		return nil, err
 	}
@@ -24,5 +25,5 @@ func LoadFromServiceJSON(serviceAccountPath string, scope ...string) (*http.Clie
 	if err != nil {
 		return nil, err
 	}
-	return conf.Client(oauth2.NoContext), nil
+	return conf.Client(context.Background()), nil
 }

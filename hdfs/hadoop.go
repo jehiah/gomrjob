@@ -42,7 +42,7 @@ func StreamingJar() (string, error) {
 	if hadoopHome == "" {
 		return "", errors.New("env HADOOP_HOME not set")
 	}
-	p := regexp.MustCompile("^hadoop.*streaming.*\\.jar$")
+	p := regexp.MustCompile(`^hadoop.*streaming.*\.jar$`)
 	w := func(pathString string, info os.FileInfo, err error) error {
 		if p.FindString(path.Base(pathString)) != "" {
 			streamingJarPath = pathString
@@ -50,7 +50,10 @@ func StreamingJar() (string, error) {
 		}
 		return nil
 	}
-	filepath.Walk(hadoopHome, w)
+	err := filepath.Walk(hadoopHome, w)
+	if err != nil {
+		return streamingJarPath, err
+	}
 	if streamingJarPath == "" {
 		return "", errors.New("no streaming.jar found")
 	}

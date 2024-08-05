@@ -242,10 +242,10 @@ func JsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- KeyVa
 				log.Printf("%s - failed encoding %v", err, kv.Value)
 				continue
 			}
-			w.Write(kBytes)
-			w.Write(tab)
-			w.Write(vBytes)
-			w.Write(newline)
+			w.Write(kBytes)  // nolint:errcheck
+			w.Write(tab)     // nolint:errcheck
+			w.Write(vBytes)  // nolint:errcheck
+			w.Write(newline) // nolint:errcheck
 		}
 		w.Flush()
 		wg.Done()
@@ -275,10 +275,10 @@ func RawJsonInternalOutputProtocol(writer io.Writer) (*sync.WaitGroup, chan<- Ke
 				log.Printf("%s - failed encoding %v", err, kv.Value)
 				continue
 			}
-			w.Write(kBytes)
-			w.Write(tab)
-			w.Write(vBytes)
-			w.Write(newline)
+			w.Write(kBytes)  // nolint:errcheck
+			w.Write(tab)     // nolint:errcheck
+			w.Write(vBytes)  // nolint:errcheck
+			w.Write(newline) // nolint:errcheck
 		}
 		w.Flush()
 		wg.Done()

@@ -1,6 +1,6 @@
 # GoMRJob 
 
-![Build Status](https://github.com/jehiah/gomrjob/actions/workflows/ci.yml/badge.svg?branch=master)
+![Build Status](https://github.com/jehiah/gomrjob/actions/workflows/ci.yaml/badge.svg?branch=master)
 [![Docs](https://pkg.go.dev/badge/github.com/jehiah/gomrjob.svg)](http://pkg.go.dev/github.com/jehiah/gomrjob)
 [![GitHub release](https://img.shields.io/github/release/jehiah/gomrjob.svg)](https://github.com/jehiah/gomrjob/releases/latest)
 

@@ -40,8 +40,14 @@ func sortPhase(in io.Reader, out io.Writer) error {
 	}
 	sort.Sort(sortedData{data})
 	for _, line := range data {
-		out.Write(bytes.TrimRight(line, "\n"))
-		out.Write([]byte("\n"))
+		_, err := out.Write(bytes.TrimRight(line, "\n"))
+		if err != nil {
+			return err
+		}
+		_, err = out.Write([]byte("\n"))
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

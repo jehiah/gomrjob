@@ -250,7 +250,7 @@ func (r *Runner) Stage() string {
 
 // Run is the program entry point from main()
 //
-// When executed directly (--stage='') uploads loads the executibile
+// When executed directly (--stage=”) uploads loads the executibile
 // and submits mapreduce jobs for each stage of the program
 func (r *Runner) Run() error {
 	if *step >= len(r.Steps) {

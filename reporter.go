@@ -14,7 +14,7 @@ func Counter(group string, counter string, amount int64) {
 	os.Stderr.Sync()
 }
 
-//  reporter:status:<message>
+// reporter:status:<message>
 func Status(message string) {
 	fmt.Fprintf(os.Stderr, "reporter:status:%s\n", message)
 	os.Stderr.Sync()
